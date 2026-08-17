@@ -1,0 +1,62 @@
+{% extends 'interventions/base.html' %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <header class="flex justify-between items-center mb-8 pb-4 border-b">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">🚨 Maintenance Curative</h1>
+            <p class="text-sm text-gray-500 mt-1">Historique des pannes déclarées, classées par machine.</p>
+        </div>
+        {% if user.role != 'production' %}
+        <a href="{% url 'declarer_panne' %}" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition whitespace-nowrap">
+            ⚠️ Déclarer une panne
+        </a>
+        {% endif %}
+    </header>
+
+    <form method="GET" class="mb-6 flex items-center gap-3">
+        <label class="text-sm font-medium text-gray-700">Filtrer par machine :</label>
+        <select name="machine" onchange="this.form.submit()" class="p-2 border border-gray-300 rounded-md">
+            <option value="">Toutes les machines</option>
+            {% for machine in machines %}
+                <option value="{{ machine.id }}" {% if machine.id == machine_selectionnee %}selected{% endif %}>{{ machine.code_interne }} - {{ machine.nom }}</option>
+            {% endfor %}
+        </select>
+    </form>
+
+    {% regroup interventions by machine as interventions_par_machine %}
+
+    {% for groupe in interventions_par_machine %}
+    <div class="bg-white rounded-xl shadow border mb-6">
+        <div class="px-6 py-4 border-b bg-slate-50 rounded-t-xl flex items-center justify-between">
+            <h2 class="text-lg font-bold text-gray-800">📍 {{ groupe.grouper.code_interne }} - {{ groupe.grouper.nom }}</h2>
+            <span class="text-xs text-gray-500">{{ groupe.list|length }} panne{{ groupe.list|length|pluralize }} déclarée{{ groupe.list|length|pluralize }}</span>
+        </div>
+        <div class="divide-y">
+            {% for intervention in groupe.list %}
+            <div class="px-6 py-4 flex items-start justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-xs font-semibold uppercase px-2 py-1 rounded {% if intervention.statut == 'a_faire' %}bg-red-100 text-red-800{% elif intervention.statut == 'en_cours' %}bg-orange-100 text-orange-800{% else %}bg-green-100 text-green-800{% endif %}">
+                            {{ intervention.get_statut_display }}
+                        </span>
+                        <span class="text-xs text-gray-400">#{{ intervention.id }} · {{ intervention.date_creation|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    <p class="font-bold text-gray-900">{{ intervention.titre }}</p>
+                    <p class="text-sm text-gray-600">{{ intervention.description }}</p>
+                    {% if intervention.compte_rendu %}
+                    <p class="text-sm text-gray-500 italic mt-1">Compte-rendu : {{ intervention.compte_rendu }}</p>
+                    {% endif %}
+                </div>
+                {% if intervention.date_resolution %}
+                <span class="text-xs text-gray-400 whitespace-nowrap">Résolu le {{ intervention.date_resolution|date:"d/m/Y H:i" }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% empty %}
+    <p class="text-gray-500 text-center py-8">Aucune panne déclarée pour le moment.</p>
+    {% endfor %}
+</div>
+{% endblock %}

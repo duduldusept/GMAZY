@@ -1,0 +1,25 @@
+# Environnement virtuel Python
+venv/
+env/
+.venv/
+
+# Fichiers de secrets / configuration locale
+.env
+
+# Base de données locale (contient des données réelles, ne doit pas être publique)
+db.sqlite3
+db.sqlite3-journal
+
+# Fichiers Python compilés
+__pycache__/
+*.pyc
+*.pyo
+
+# Fichiers statiques collectés (générés, pas à committer)
+staticfiles/
+
+# Fichiers d'IDE / OS divers
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

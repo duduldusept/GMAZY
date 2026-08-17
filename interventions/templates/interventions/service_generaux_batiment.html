@@ -1,0 +1,47 @@
+{% extends 'interventions/base.html' %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <header class="mb-8 pb-4 border-b">
+        <h1 class="text-3xl font-bold text-gray-800">🏢 Service Généraux — Bâtiment</h1>
+        <p class="text-sm text-gray-500 mt-1">Toutes les interventions (préventives et curatives) des équipements de la zone « Bâtiment ».</p>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {% for intervention in interventions %}
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 {% if intervention.statut == 'a_faire' %}border-red-500{% elif intervention.statut == 'en_cours' %}border-orange-500{% else %}border-green-500{% endif %}">
+            <div class="flex justify-between items-start mb-2">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs font-semibold uppercase px-2 py-1 rounded {% if intervention.statut == 'a_faire' %}bg-red-100 text-red-800{% elif intervention.statut == 'en_cours' %}bg-orange-100 text-orange-800{% else %}bg-green-100 text-green-800{% endif %}">
+                        {{ intervention.get_statut_display }}
+                    </span>
+                    <span class="text-xs font-semibold uppercase px-2 py-1 rounded {% if intervention.type_intervention == 'preventif' %}bg-emerald-100 text-emerald-800{% else %}bg-slate-200 text-slate-800{% endif %}">
+                        {{ intervention.get_type_intervention_display }}
+                    </span>
+                </div>
+                <span class="text-xs text-gray-500">#{{ intervention.id }}</span>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-900 mb-1">{{ intervention.titre }}</h3>
+            <p class="text-sm font-medium text-gray-600 mb-1">📍 {{ intervention.machine.code_interne }} - {{ intervention.machine.nom }}</p>
+            {% if intervention.date_prevue %}
+            <p class="text-xs text-gray-500 mb-2">🗓️ Prévue le {{ intervention.date_prevue|date:"d/m/Y H:i" }}</p>
+            {% endif %}
+            <p class="text-gray-700 text-sm mb-4">{{ intervention.description }}</p>
+            <p class="text-xs text-gray-400">Signalée le {{ intervention.date_creation|date:"d/m/Y H:i" }}{% if intervention.date_resolution %} · Résolue le {{ intervention.date_resolution|date:"d/m/Y H:i" }}{% endif %}</p>
+
+            {% if intervention.statut != 'resolu' %}
+            <form method="POST" action="{% url 'changer_statut' intervention.id %}" class="mt-4">
+                {% csrf_token %}
+                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded text-sm transition">
+                    {% if intervention.statut == 'a_faire' %}🔄 Prendre en charge{% else %}✅ Marquer comme Résolu{% endif %}
+                </button>
+            </form>
+            {% endif %}
+        </div>
+        {% empty %}
+        <p class="text-gray-500 col-span-2 text-center py-8">Aucune intervention pour la zone Bâtiment pour le moment.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

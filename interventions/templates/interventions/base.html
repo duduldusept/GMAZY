@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GMAO Connect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans flex h-screen overflow-hidden">
+
+    <div class="w-64 bg-slate-900 text-white flex flex-col overflow-y-auto">
+        <div class="p-4 text-xl font-bold uppercase tracking-wider border-b border-slate-800 text-red-500 flex items-center gap-2">
+            ⚙️ GMazy <span class="text-white text-xs bg-slate-700 px-2 py-0.5 rounded">v1.0</span>
+        </div>
+
+        <div class="px-4 py-2 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+            <div class="truncate">
+                <p class="text-xs font-bold truncate">{{ user.username }}</p>
+                <p class="text-[11px] text-slate-400 capitalize">{{ user.get_role_display }}</p>
+            </div>
+            <a href="{% url 'deconnexion' %}" class="text-[11px] bg-slate-800 hover:bg-red-900 px-2 py-1 rounded transition shrink-0">Quitter</a>
+        </div>
+
+        <nav class="p-3 space-y-0.5">
+            {% if user.role != 'chef_equipe' and user.role != 'production' %}
+            <a href="{% url 'liste_interventions' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                🛠️ Tableau de bord
+            </a>
+            {% endif %}
+            {% if user.role != 'chef_equipe' and user.role != 'production' and user.role != 'technicien' %}
+            <a href="{% url 'statistiques' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                📊 Analyse & Temps d'arrêt
+            </a>
+            {% endif %}
+            {% if user.role != 'production' %}
+            <a href="{% url 'declarer_panne' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm text-red-400">
+                ⚠️ Déclarer une panne
+            </a>
+            {% endif %}
+            <a href="{% url 'amelioration' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                💡 Amélioration
+            </a>
+            {% if user.role != 'chef_equipe' and user.role != 'production' %}
+            <a href="{% url 'stock_pieces' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                📦 Stock de Pièces
+            </a>
+            {% endif %}
+
+            <div class="pt-2 border-t border-slate-800 my-1"></div>
+            <p class="px-3 text-xs uppercase tracking-wider text-slate-500 font-bold mb-0.5">Maintenance</p>
+            <a href="{% url 'maintenance_preventive' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                🗓️ Maintenance Préventive
+            </a>
+            <a href="{% url 'maintenance_curative' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                🚨 Maintenance Curative
+            </a>
+            {% if user.role != 'chef_equipe' and user.role != 'production' %}
+            <a href="{% url 'parc_machines' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                🏭 Machine
+            </a>
+            {% endif %}
+            {% if user.role != 'chef_equipe' and user.role != 'production' and user.role != 'technicien' %}
+            <a href="{% url 'maintenance_analyse' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                🥧 Analyse
+            </a>
+            {% endif %}
+
+            <div class="pt-2 border-t border-slate-800 my-1"></div>
+            <p class="px-3 text-xs uppercase tracking-wider text-slate-500 font-bold mb-0.5">Service Généraux</p>
+            <a href="{% url 'service_generaux_batiment' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                🏢 Bâtiment
+            </a>
+            <a href="{% url 'service_generaux_preventif' %}" class="flex items-center gap-2 pl-8 pr-3 py-1.5 rounded-md hover:bg-slate-800 transition font-medium text-xs text-slate-300">
+                🗓️ Préventif
+            </a>
+
+            {% if user.role != 'chef_equipe' and user.role != 'production' and user.role != 'technicien' %}
+            <div class="pt-2 border-t border-slate-800 my-1"></div>
+            <p class="px-3 text-xs uppercase tracking-wider text-slate-500 font-bold mb-0.5">Budget</p>
+            <a href="{% url 'budget_machine' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                💰 Budget Machine
+            </a>
+            <a href="{% url 'budget_section' 'consommable' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                🧴 Consommable
+            </a>
+            <a href="{% url 'budget_section' 'entretien' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                🔧 Entretien
+            </a>
+            <a href="{% url 'budget_section' 'travaux_neuf' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                🏗️ Travaux Neuf
+            </a>
+            {% endif %}
+
+            {% if user.role == 'admin' or user.is_superuser %}
+            <div class="pt-2 border-t border-slate-800 my-1"></div>
+            <p class="px-3 text-xs uppercase tracking-wider text-slate-500 font-bold mb-0.5">Administration</p>
+            <a href="/admin/" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm text-blue-400">
+                👤 Gestion (Machines/Users)
+            </a>
+            {% endif %}
+        </nav>
+    </div>
+
+    <div class="flex-1 flex flex-col overflow-y-auto">
+        <main class="p-8">
+            {% block content %}
+            {% endblock %}
+        </main>
+    </div>
+{% if messages %}
+        {% for message in messages %}
+            <div id="popup-alert" class="fixed bottom-5 right-5 max-w-md p-4 rounded-lg shadow-2xl flex items-center gap-3 transform translate-y-0 transition-all duration-300 z-50
+                {% if message.tags == 'error' %}bg-red-600 text-white{% else %}bg-green-600 text-white{% endif %}">
+
+                <div class="text-xl">
+                    {% if message.tags == 'error' %}⚠️{% else %}✅{% endif %}
+                </div>
+                <div>
+                    <p class="text-sm font-semibold">{{ message }}</p>
+                </div>
+                <button onclick="fermerPopup()" class="ml-auto bg-black bg-opacity-20 hover:bg-opacity-40 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold transition">
+                    ✕
+                </button>
+            </div>
+        {% endfor %}
+
+        <script>
+            const alertBox = document.getElementById('popup-alert');
+
+            // Fonction pour fermer manuellement au clic sur la croix
+            function fermerPopup() {
+                if (alertBox) {
+                    alertBox.style.opacity = '0';
+                    // BUGFIX : l'élément n'était jamais retiré du DOM, il
+                    // restait invisible mais en position fixed, ce qui
+                    // pouvait bloquer des clics en dessous.
+                    setTimeout(() => alertBox.remove(), 300);
+                }
+            }
+
+            // Fermeture automatique après 5 secondes (5000 millisecondes)
+            setTimeout(fermerPopup, 5000);
+        </script>
+    {% endif %}
+
+</body>
+</html>

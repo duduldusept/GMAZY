@@ -1,0 +1,68 @@
+{% extends 'interventions/base.html' %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="max-w-2xl mx-auto">
+    <header class="mb-8 pb-4 border-b">
+        <h1 class="text-3xl font-bold text-gray-800">🥧 Analyse Préventif / Curatif</h1>
+        <p class="text-sm text-gray-500 mt-1">Répartition de toutes les interventions de maintenance par type.</p>
+    </header>
+
+    <div class="bg-white p-6 rounded-xl shadow border">
+        {% if total > 0 %}
+        <canvas id="pieChart" style="max-height: 400px;"></canvas>
+        <div class="grid grid-cols-2 gap-4 mt-6 text-center">
+            <div class="p-4 bg-emerald-50 rounded-lg">
+                <p class="text-2xl font-bold text-emerald-700">{{ pct_preventif }}%</p>
+                <p class="text-sm text-gray-600">Préventif ({{ nb_preventif }})</p>
+            </div>
+            <div class="p-4 bg-red-50 rounded-lg">
+                <p class="text-2xl font-bold text-red-700">{{ pct_correctif }}%</p>
+                <p class="text-sm text-gray-600">Curatif ({{ nb_correctif }})</p>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-gray-500 text-center py-8">Aucune intervention enregistrée pour le moment.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% if total > 0 %}
+{{ nb_preventif|json_script:"nb-preventif-data" }}
+{{ nb_correctif|json_script:"nb-correctif-data" }}
+<script>
+    const nbPreventif = JSON.parse(document.getElementById('nb-preventif-data').textContent);
+    const nbCorrectif = JSON.parse(document.getElementById('nb-correctif-data').textContent);
+    const totalInterventions = nbPreventif + nbCorrectif;
+
+    const ctx = document.getElementById('pieChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Préventif', 'Curatif'],
+            datasets: [{
+                data: [nbPreventif, nbCorrectif],
+                backgroundColor: ['rgba(16, 185, 129, 0.85)', 'rgba(239, 68, 68, 0.85)'],
+                borderColor: ['rgb(5, 150, 105)', 'rgb(220, 38, 38)'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            const pct = totalInterventions > 0 ? ((context.parsed / totalInterventions) * 100).toFixed(1) : 0;
+                            return `${context.label}: ${context.parsed} (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

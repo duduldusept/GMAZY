@@ -1,0 +1,161 @@
+{% extends 'interventions/base.html' %}
+
+{% block content %}
+<header class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8 pb-4">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">📦 Stock de Pièces</h1>
+        <p class="text-sm text-gray-500 mt-1">Suivi des pièces détachées et de leur disponibilité</p>
+    </div>
+
+    <div class="flex flex-col md:flex-row gap-2">
+        <form method="GET" class="flex gap-2">
+            <input type="text" name="q" value="{{ recherche }}" placeholder="Rechercher une pièce, une référence, une machine..."
+                   class="p-2 border border-gray-300 rounded-md w-72 focus:ring-2 focus:ring-red-500 focus:outline-none">
+            <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-md text-sm transition">
+                Rechercher
+            </button>
+        </form>
+        <button type="button" onclick="ouvrirModalPiece()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md text-sm transition whitespace-nowrap">
+            + Ajouter une pièce
+        </button>
+    </div>
+</header>
+
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="w-full text-sm text-left">
+        <thead class="bg-slate-900 text-white uppercase text-xs">
+            <tr>
+                <th class="px-4 py-3">Référence</th>
+                <th class="px-4 py-3">Pièce</th>
+                <th class="px-4 py-3">Machine compatible</th>
+                <th class="px-4 py-3 text-center">Stock</th>
+                <th class="px-4 py-3 text-center">Seuil d'alerte</th>
+                <th class="px-4 py-3 text-right">Prix unitaire</th>
+                <th class="px-4 py-3 text-center">Ajuster le stock</th>
+                <th class="px-4 py-3 text-center">Supprimer</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for piece in pieces %}
+            <tr class="{% if piece.en_alerte_stock %}bg-red-50{% endif %}">
+                <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ piece.reference }}</td>
+                <td class="px-4 py-3">
+                    <p class="font-semibold text-gray-900">{{ piece.nom }}</p>
+                    {% if piece.description %}<p class="text-xs text-gray-500">{{ piece.description|truncatechars:80 }}</p>{% endif %}
+                </td>
+                <td class="px-4 py-3 text-gray-700">
+                    {% if piece.machine_compatible %}
+                        {{ piece.machine_compatible.code_interne }} - {{ piece.machine_compatible.nom }}
+                    {% else %}
+                        <span class="text-gray-400 italic">Toutes machines</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-center">
+                    <span class="px-2 py-1 rounded-full text-xs font-bold {% if piece.en_alerte_stock %}bg-red-600 text-white{% else %}bg-green-100 text-green-800{% endif %}">
+                        {{ piece.quantite_stock }}
+                        {% if piece.en_alerte_stock %} ⚠️{% endif %}
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-center text-gray-500">{{ piece.stock_minimum }}</td>
+                <td class="px-4 py-3 text-right text-gray-700">
+                    {% if piece.prix_unitaire %}{{ piece.prix_unitaire }} €{% else %}—{% endif %}
+                </td>
+                <td class="px-4 py-3">
+                    <form method="POST" action="{% url 'ajuster_stock_piece' piece.id %}" class="flex items-center justify-center gap-1">
+                        {% csrf_token %}
+                        <input type="number" name="quantite" min="1" value="1" class="w-16 p-1 border border-gray-300 rounded text-center text-xs">
+                        <button type="submit" name="action" value="ajouter" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1 px-2 rounded transition" title="Ajouter au stock">+</button>
+                        <button type="submit" name="action" value="retirer" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-2 rounded transition" title="Retirer du stock">−</button>
+                    </form>
+                </td>
+                <td class="px-4 py-3 text-center">
+                    <form method="POST" action="{% url 'supprimer_piece' piece.id %}" class="form-supprimer-piece" data-nom="{{ piece.nom }}">
+                        {% csrf_token %}
+                        <button type="submit" class="bg-gray-200 hover:bg-red-600 hover:text-white text-gray-600 text-xs font-bold py-1 px-2 rounded transition" title="Supprimer la pièce">
+                            🗑️
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="px-4 py-8 text-center text-gray-500">
+                    {% if recherche %}Aucune pièce ne correspond à « {{ recherche }} ».{% else %}Aucune pièce enregistrée pour le moment.{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal d'ajout d'une pièce -->
+<div id="modal-ajouter-piece" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">📦 Ajouter une pièce au catalogue</h2>
+        <form method="POST" action="{% url 'ajouter_piece' %}" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nom de la pièce *</label>
+                <input type="text" name="nom" required placeholder="Ex: Courroie trapézoïdale" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Référence *</label>
+                <input type="text" name="reference" required placeholder="Ex: CRT-2024-08" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Machine compatible</label>
+                <select name="machine_compatible" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
+                    <option value="">Toutes machines</option>
+                    {% for machine in machines %}
+                        <option value="{{ machine.id }}">{{ machine.code_interne }} - {{ machine.nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantité initiale</label>
+                    <input type="number" name="quantite_stock" min="0" value="0" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Seuil d'alerte</label>
+                    <input type="number" name="stock_minimum" min="0" value="1" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Prix unitaire (€)</label>
+                <input type="text" name="prix_unitaire" placeholder="Ex: 12.50" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea name="description" rows="3" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none"></textarea>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="fermerModalPiece()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-md transition">Annuler</button>
+                <button type="submit" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition">Ajouter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function ouvrirModalPiece() {
+        const modal = document.getElementById('modal-ajouter-piece');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+    function fermerModalPiece() {
+        const modal = document.getElementById('modal-ajouter-piece');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    document.querySelectorAll('.form-supprimer-piece').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            const nom = form.dataset.nom || 'cette pièce';
+            if (!confirm('Supprimer définitivement « ' + nom + ' » du catalogue ?')) {
+                e.preventDefault();
+            }
+        });
+    });
+</script>
+{% endblock %}

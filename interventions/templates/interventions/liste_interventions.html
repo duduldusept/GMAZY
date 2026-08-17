@@ -1,0 +1,35 @@
+{% extends 'interventions/base.html' %}
+
+{% block content %}
+<header class="flex justify-between items-center mb-8 pb-4">
+    <h1 class="text-3xl font-bold text-gray-800">🛠️ Liste des Interventions</h1>
+</header>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for intervention in interventions %}
+    <div id="intervention-{{ intervention.id }}" class="bg-white rounded-lg shadow p-6 border-l-4 {% if intervention.statut == 'a_faire' %}border-red-500{% elif intervention.statut == 'en_cours' %}border-orange-500{% else %}border-green-500{% endif %} scroll-mt-8">
+        <div class="flex justify-between items-start mb-2">
+            <span class="text-xs font-semibold uppercase px-2 py-1 rounded {% if intervention.statut == 'a_faire' %}bg-red-100 text-red-800{% elif intervention.statut == 'en_cours' %}bg-orange-100 text-orange-800{% else %}bg-green-100 text-green-800{% endif %}">
+                {{ intervention.get_statut_display }}
+            </span>
+            <span class="text-xs text-gray-500">#{{ intervention.id }}</span>
+        </div>
+
+        <h3 class="text-xl font-bold text-gray-900 mb-1">{{ intervention.titre }}</h3>
+        <p class="text-sm font-medium text-gray-600 mb-4">📍 {{ intervention.machine.code_interne }} - {{ intervention.machine.nom }}</p>
+        <p class="text-gray-700 text-sm mb-6">{{ intervention.description }}</p>
+
+        {% if intervention.statut != 'resolu' %}
+        <form method="POST" action="{% url 'changer_statut' intervention.id %}">
+            {% csrf_token %}
+            <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded text-sm transition">
+                {% if intervention.statut == 'a_faire' %}🔄 Prendre en charge{% else %}✅ Marquer comme Résolu{% endif %}
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    {% empty %}
+    <p class="text-gray-500 col-span-3 text-center py-8">Aucune intervention en cours.</p>
+    {% endfor %}
+</div>
+{% endblock %}

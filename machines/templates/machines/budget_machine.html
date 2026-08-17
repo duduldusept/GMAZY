@@ -1,0 +1,83 @@
+{% extends 'interventions/base.html' %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <header class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-8 pb-4 border-b">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">💰 Budget Machine</h1>
+            <p class="text-sm text-gray-500 mt-1">Coût des pièces détachées utilisées, par machine</p>
+        </div>
+
+        <form method="GET" class="flex items-end gap-2">
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Mois</label>
+                <select name="mois" class="p-2 border border-gray-300 rounded-md text-sm">
+                    {% for valeur, nom in mois_choices %}
+                        <option value="{{ valeur }}" {% if valeur == mois_selectionne %}selected{% endif %}>{{ nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Année</label>
+                <select name="annee" class="p-2 border border-gray-300 rounded-md text-sm">
+                    {% for annee in annees_disponibles %}
+                        <option value="{{ annee }}" {% if annee == annee_selectionnee %}selected{% endif %}>{{ annee }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-md text-sm transition">
+                Afficher
+            </button>
+        </form>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="bg-white p-5 rounded-xl shadow border">
+            <p class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">
+                Total du mois — {{ mois_selectionne }}/{{ annee_selectionnee }}
+            </p>
+            <p class="text-2xl font-bold text-gray-900">{{ total_mois_general|floatformat:2 }} €</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow border">
+            <p class="text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">
+                Total de l'année {{ annee_selectionnee }}
+            </p>
+            <p class="text-2xl font-bold text-gray-900">{{ total_annee_general|floatformat:2 }} €</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="w-full text-sm text-left">
+            <thead class="bg-slate-900 text-white uppercase text-xs">
+                <tr>
+                    <th class="px-4 py-3">Machine</th>
+                    <th class="px-4 py-3 text-right">Coût du mois</th>
+                    <th class="px-4 py-3 text-right">Coût de l'année</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for ligne in lignes_budget %}
+                <tr>
+                    <td class="px-4 py-3">
+                        <p class="font-semibold text-gray-900">{{ ligne.machine.code_interne }} - {{ ligne.machine.nom }}</p>
+                        <p class="text-xs text-gray-500">{{ ligne.machine.emplacement }}</p>
+                    </td>
+                    <td class="px-4 py-3 text-right font-mono">{{ ligne.cout_mois|floatformat:2 }} €</td>
+                    <td class="px-4 py-3 text-right font-mono">{{ ligne.cout_annee|floatformat:2 }} €</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="px-4 py-8 text-center text-gray-500">Aucune machine enregistrée pour le moment.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <p class="text-xs text-gray-400 mt-4">
+        Le coût est calculé à partir des pièces liées à une intervention (quantité × prix unitaire),
+        rattachées au mois/année de signalement de l'intervention (seules les pièces avec un prix
+        unitaire renseigné sont prises en compte).
+    </p>
+</div>
+{% endblock %}
