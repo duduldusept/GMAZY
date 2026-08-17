@@ -9,6 +9,8 @@ env/
 # Base de données locale (contient des données réelles, ne doit pas être publique)
 db.sqlite3
 db.sqlite3-journal
+db.sqlite3-wal
+db.sqlite3-shm
 
 # Fichiers Python compilés
 __pycache__/
@@ -17,6 +19,9 @@ __pycache__/
 
 # Fichiers statiques collectés (générés, pas à committer)
 staticfiles/
+
+# NSSM (téléchargé automatiquement par installer_service.ps1, pas à committer)
+nssm/
 
 # Fichiers d'IDE / OS divers
 .vscode/
