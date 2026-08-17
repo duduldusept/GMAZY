@@ -6,6 +6,18 @@ Ce fichier fait suite à `RESUME_POUR_CLAUDE_CODE_1.md` (contexte transmis depui
 
 ---
 
+## 2026-08-17 (suite 2) — Contrôle de l'horodatage "Analyse des Temps d'Arrêt"
+
+**Demande** : vérifier que le compteur de temps d'arrêt démarre bien au moment de la déclaration de la panne.
+
+**Vérification faite** : test en direct dans `manage.py shell` — création d'une `Intervention` et comparaison des timestamps avant/après. Confirmé : `date_creation` (`interventions/models.py:48`, `default=timezone.now`) est fixé à la milliseconde près au moment où `declarer_panne` (POST) crée l'objet. `duree_arret_heures()` calcule `now() - date_creation` en continu tant que l'intervention n'est pas résolue. **L'horodatage lui-même est correct**, le compteur démarre bien à la déclaration.
+
+**Bug trouvé et corrigé** (`interventions/views.py`, fonction `statistiques_machines`, ~ligne 140) : le total affiché sur le graphique "Analyse des Temps d'Arrêt" tronquait chaque intervention à l'heure entière (`int(...)`) *avant* de sommer. Conséquence : une panne de moins d'1h affichait 0h, et plusieurs pannes courtes sommées entre elles perdaient jusqu'à ~1h chacune (démontré : deux pannes de 0.9h + 0.6h = 1.5h réelles, affichaient 0h avec l'ancienne méthode). Corrigé en sommant les durées brutes puis en arrondissant le total à 1 décimale (`round(sum(...), 1)`). Appliqué dans `gmao_entreprise` et `gmao_entreprise_rdy`. Vérifié avec `manage.py check` + test manuel de la page `/statistiques/`.
+
+**⚠️ À faire** : ce correctif n'est pas encore commité/poussé (en attente de confirmation utilisateur).
+
+---
+
 ## 2026-08-17 (suite) — Lecture complète du projet + nettoyage bugs/doublons
 
 **Lecture complète** : relecture de tous les fichiers Python et des templates clés (`models.py`, `views.py`, `urls.py`, `decorators.py`, `settings.py`, `admin.py`, `base.html` des 3 apps) pour comprendre l'architecture. Résumé :

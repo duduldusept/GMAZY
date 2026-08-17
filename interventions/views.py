@@ -136,9 +136,14 @@ def statistiques_machines(request):
         interventions_arretees = interventions.filter(etat_machine='arretee')
         interventions_degradees = interventions.filter(etat_machine='degradee')
 
-        # Somme des heures pour chaque série (fait appel à la fonction du model)
-        total_heures_arret = sum(int(interv.duree_arret_heures()) for interv in interventions_arretees)
-        total_heures_degrade = sum(int(interv.duree_arret_heures()) for interv in interventions_degradees)
+        # Somme des heures pour chaque série (fait appel à la fonction du model).
+        # BUGFIX : on arrondit désormais le total à 1 décimale plutôt que de
+        # tronquer chaque intervention à l'heure entière avant de sommer. Avec
+        # l'ancienne méthode, une panne récente (< 1h) comptait pour 0, et
+        # plusieurs pannes courtes sommées entre elles perdaient jusqu'à ~1h
+        # chacune (ex: trois pannes de 0.9h affichaient 0h au lieu de ~2.7h).
+        total_heures_arret = round(sum(interv.duree_arret_heures() for interv in interventions_arretees), 1)
+        total_heures_degrade = round(sum(interv.duree_arret_heures() for interv in interventions_degradees), 1)
 
         temps_arret.append(total_heures_arret)
         temps_degrade.append(total_heures_degrade)
