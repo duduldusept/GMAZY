@@ -24,7 +24,7 @@ C'est terminé : la GMAO tourne en continu et redémarre toute seule avec le ser
 
 - Double-clic sur **`mettre_a_jour.bat`** → récupère la dernière version (`git pull`), réinstalle les dépendances si besoin, applique les migrations, régénère les fichiers statiques, redémarre le service automatiquement.
 
-Aucun droit administrateur nécessaire pour cette étape.
+Aucun droit administrateur nécessaire pour `git pull` / dépendances / migrations. Le redémarrage du service (`nssm restart`) demande en revanche que le compte utilisé ait le droit de contrôler le service Windows **GmaoDjango** — c'est le cas du compte qui a servi à l'installation initiale.
 
 ## Commandes utiles en cas de besoin
 

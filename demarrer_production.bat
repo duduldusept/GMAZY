@@ -17,7 +17,7 @@ if not exist "venv\Scripts\activate.bat" (
     echo [ERREUR] Environnement virtuel introuvable ^(venv\Scripts\activate.bat^).
     echo Lance d'abord installer.bat pour installer la GMAO.
     echo.
-    pause
+    if defined SESSIONNAME pause
     exit /b 1
 )
 
@@ -28,4 +28,7 @@ waitress-serve --host=0.0.0.0 --port=%PORT% config.wsgi:application
 
 echo.
 echo [Le serveur s'est arrete, ou n'a pas pu demarrer - regarde le message ci-dessus.]
-pause
+REM SESSIONNAME n'est defini que dans une session interactive : en tant que
+REM service Windows (NSSM), on saute le "pause" pour que le processus se
+REM termine et que NSSM puisse redemarrer automatiquement le service.
+if defined SESSIONNAME pause
