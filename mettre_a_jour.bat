@@ -1,7 +1,7 @@
 @echo off
 REM =====================================================================
-REM Met à jour la GMAO déjà installée sur le serveur, puis redémarre le
-REM service Windows. Aucune configuration à faire : tout est détecté
+REM Met a jour la GMAO deja installee sur le serveur, puis redemarre le
+REM service Windows. Aucune configuration a faire : tout est detecte
 REM automatiquement (dossier du projet, emplacement de NSSM).
 REM =====================================================================
 setlocal
@@ -15,30 +15,30 @@ echo.
 echo ===== Mise a jour de la GMAO =====
 echo.
 
-REM Si le projet est versionné avec Git, on récupère la dernière version.
-REM Sinon (fichiers copiés à la main), on continue directement avec les
-REM étapes ci-dessous : copie d'abord les nouveaux fichiers avant de lancer
+REM Si le projet est versionne avec Git, on recupere la derniere version.
+REM Sinon (fichiers copies a la main), on continue directement avec les
+REM etapes ci-dessous : copie d'abord les nouveaux fichiers avant de lancer
 REM ce script.
 if exist ".git" (
-    echo Récupération de la dernière version via Git...
+    echo Recuperation de la derniere version via Git...
     git pull
 ) else (
-    echo [Pas de dépôt Git détecté - assure-toi d'avoir déjà copié les nouveaux fichiers sur le serveur avant de continuer.]
+    echo [Pas de depot Git detecte - assure-toi d'avoir deja copie les nouveaux fichiers sur le serveur avant de continuer.]
 )
 
 call venv\Scripts\activate.bat
 
-echo Installation des dépendances (au cas où requirements.txt aurait changé)...
+echo Installation des dependances (au cas ou requirements.txt aurait change)...
 pip install -r requirements.txt --quiet
 
-echo Application des migrations de base de données...
+echo Application des migrations de base de donnees...
 python manage.py migrate
 
 echo Rassemblement des fichiers statiques...
 python manage.py collectstatic --noinput
 
 if exist "%NSSM_EXE%" (
-    echo Redémarrage du service %NOM_SERVICE%...
+    echo Redemarrage du service %NOM_SERVICE%...
     "%NSSM_EXE%" restart %NOM_SERVICE%
 ) else (
     echo [NSSM introuvable - le service n'a peut-etre pas encore ete installe.]

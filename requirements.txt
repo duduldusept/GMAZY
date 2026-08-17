@@ -7,3 +7,9 @@ tzdata==2026.3
 # .env (voir .env.example). Sans lui, les variables d'environnement
 # système sont utilisées directement.
 python-dotenv
+
+# Nécessaires pour le déploiement en production (voir GUIDE_DEPLOIEMENT.md),
+# mais aussi utilisées par settings.py en développement (whitenoise est dans
+# MIDDLEWARE dans tous les cas) : à garder installées même pour lancer_serveur.bat.
+waitress
+whitenoise
