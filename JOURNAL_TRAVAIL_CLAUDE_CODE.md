@@ -6,6 +6,16 @@ Ce fichier fait suite à `RESUME_POUR_CLAUDE_CODE_1.md` (contexte transmis depui
 
 ---
 
+## 2026-08-17 (suite 3) — Synchronisation gmao_entreprise → gmao_entreprise_rdy
+
+**Constat** : la revue de bugs `--fix` de la session précédente n'avait ciblé que `gmao_entreprise` (dépôt Git) ; les 3 correctifs (`demarrer_production.bat`, `requirements.txt`, `PENSE_BETE_DEPLOIEMENT.md`) et ce fichier journal n'avaient jamais été recopiés dans `gmao_entreprise_rdy`. Corrigé : les 4 fichiers copiés depuis `gmao_entreprise`. Un `diff -rq` complet (hors `venv/`, `.git/`, `db.sqlite3`, `__pycache__/`, `staticfiles/`, `.gitignore`, `.env`) confirme maintenant une **synchronisation parfaite** entre les deux copies.
+
+**Remarque** : la 3ᵉ copie de sauvegarde mentionnée dans `RESUME_POUR_CLAUDE_CODE_1.md` (`C:\Users\rolan\Documents\gmao_entreprise`) **n'existe plus** sur cette machine (dossier absent). À signaler à l'utilisateur si elle était censée être maintenue à jour.
+
+**À retenir pour la suite** : quand un correctif est fait dans `gmao_entreprise` (ou vice-versa), toujours répercuter manuellement dans l'autre copie avant de considérer la tâche terminée — les deux dossiers ne sont pas liés automatiquement (pas de symlink, pas de sync automatique).
+
+---
+
 ## 2026-08-17 (suite 2) — Contrôle de l'horodatage "Analyse des Temps d'Arrêt"
 
 **Demande** : vérifier que le compteur de temps d'arrêt démarre bien au moment de la déclaration de la panne.
