@@ -3,6 +3,8 @@ asgiref==3.12.1
 sqlparse==0.5.5
 tzdata==2026.3
 gunicorn
+dj-database-url
+psycopg2-binary
 
 # Optionnel mais recommandé : permet de charger automatiquement le fichier
 # .env (voir .env.example). Sans lui, les variables d'environnement
