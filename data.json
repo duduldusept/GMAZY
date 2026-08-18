@@ -133,7 +133,7 @@
     "nom": "Compresseur d'air Principal",
     "code_interne": "Compresseur",
     "zone": 9,
-    "emplacement": "Coté atelier maintenance",
+    "emplacement": "CotÃ© atelier maintenance",
     "statut": "fonctionne"
   }
 },
@@ -751,7 +751,7 @@
   "pk": 1,
   "fields": {
     "titre": "tirette pour les portes automatique",
-    "description": "ajouté de tirette déporté afin d'évité de devoir appuyer sur le bouton des porte souple",
+    "description": "ajoutÃ© de tirette dÃ©portÃ© afin d'Ã©vitÃ© de devoir appuyer sur le bouton des porte souple",
     "machine": null,
     "demandeur": [
       "Admin"
@@ -765,7 +765,7 @@
   "pk": 15,
   "fields": {
     "titre": "crochet qui ce bloque ",
-    "description": "changement de l'electro-aimant + contacteur + reglage , la machine fonctionne mais en mode dégradé ",
+    "description": "changement de l'electro-aimant + contacteur + reglage , la machine fonctionne mais en mode dÃ©gradÃ© ",
     "type_intervention": "correctif",
     "etat_machine": "arretee",
     "statut": "en_cours",
