@@ -26,7 +26,6 @@ try:
 except ImportError:
     pass
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
@@ -52,7 +51,6 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 # que DEBUG=True.
 _allowed_hosts = os.environ.get('DJANGO_ALLOWED_HOSTS', '')
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(',') if h.strip()]
-
 
 # Application definition
 
@@ -102,21 +100,16 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+import dj_database_url
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(default=f'sqlite:///{BASE_DIR / "db.sqlite3"}')
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -132,22 +125,15 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
-
 LANGUAGE_CODE = 'fr-fr'
-
 TIME_ZONE = 'Europe/Paris'
-
 USE_I18N = True
-
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
-
 STATIC_URL = 'static/'
 
 # DÉPLOIEMENT : dossier où `python manage.py collectstatic` rassemble tous
@@ -155,6 +141,7 @@ STATIC_URL = 'static/'
 # servir en production (DEBUG=False). Ce dossier n'a pas besoin d'être
 # commité dans Git (voir .gitignore) : il est régénéré à chaque déploiement.
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 STORAGES = {
     'staticfiles': {
         'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
@@ -164,5 +151,7 @@ STORAGES = {
 AUTH_USER_MODEL = 'utilisateurs.Utilisateur'
 LOGIN_URL = 'connexion'
 LOGIN_REDIRECT_URL = 'liste_interventions'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 CSRF_TRUSTED_ORIGINS = ['https://*.up.railway.app', 'https://*.vercel.app']
