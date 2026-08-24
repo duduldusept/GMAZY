@@ -8,13 +8,13 @@
     <header class="flex justify-between items-center mb-8 pb-4 border-b">
         <div>
             <h1 class="text-3xl font-bold text-gray-800">🗓️ Maintenance Préventive</h1>
-            {% if user.role != 'chef_equipe' and user.role != 'production' %}
+            {% if 'maintenance_preventive_programmer' in droits_utilisateur %}
             <p class="text-sm text-gray-500 mt-1">Programmez les interventions de maintenance préventive sur le calendrier. Cliquez sur une date pour en ajouter une.</p>
             {% else %}
             <p class="text-sm text-gray-500 mt-1">Consultez le calendrier et l'historique des maintenances préventives.</p>
             {% endif %}
         </div>
-        {% if user.role != 'chef_equipe' and user.role != 'production' %}
+        {% if 'maintenance_preventive_programmer' in droits_utilisateur %}
         <button type="button" onclick="ouvrirModal()" class="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-md transition whitespace-nowrap">
             + Programmer une intervention
         </button>
@@ -54,7 +54,7 @@
     </div>
 </div>
 
-{% if user.role != 'chef_equipe' and user.role != 'production' %}
+{% if 'maintenance_preventive_programmer' in droits_utilisateur %}
 <!-- Modal de programmation -->
 <div id="modal-programmer" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
     <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
@@ -124,7 +124,7 @@
                 list: 'Liste'
             },
             events: "{% url 'evenements_preventifs' %}"
-            {% if user.role != 'chef_equipe' and user.role != 'production' %}
+            {% if 'maintenance_preventive_programmer' in droits_utilisateur %}
             ,
             dateClick: function (info) {
                 ouvrirModal(info.dateStr + 'T08:00');

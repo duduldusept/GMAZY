@@ -30,7 +30,7 @@
             <p class="text-gray-700 text-sm mb-4">{{ intervention.description }}</p>
             <p class="text-xs text-gray-400">Signalée le {{ intervention.date_creation|date:"d/m/Y H:i" }}{% if intervention.date_resolution %} · Résolue le {{ intervention.date_resolution|date:"d/m/Y H:i" }}{% endif %}</p>
 
-            {% if intervention.statut != 'resolu' %}
+            {% if intervention.statut != 'resolu' and 'changer_statut_intervention' in droits_utilisateur %}
             <form method="POST" action="{% url 'changer_statut' intervention.id %}" class="mt-4">
                 {% csrf_token %}
                 <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded text-sm transition">

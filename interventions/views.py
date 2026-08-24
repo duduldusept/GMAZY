@@ -7,7 +7,7 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.urls import reverse
 from machines.models import Machine
 from .models import Intervention, DemandeAmelioration
-from utilisateurs.decorators import bloquer_pour_role
+from utilisateurs.permissions import a_le_droit, necessite_droit
 
 # CORRECTIF SÉCURITÉ : on ne fournit plus les listes Python brutes au
 # template pour un rendu avec |safe (faille XSS si un nom de machine
@@ -15,7 +15,7 @@ from utilisateurs.decorators import bloquer_pour_role
 # {% json_script %} côté template, qui échappe correctement les données.
 
 @login_required  # Oblige l'utilisateur à être connecté pour voir cette page
-@bloquer_pour_role('production')  # Production/Opérateur ne déclare pas de panne lui-même
+@necessite_droit('declarer_panne')
 def declarer_panne(request):
     if request.method == 'POST':
         # On récupère les données du formulaire HTML
@@ -54,7 +54,7 @@ def declarer_panne(request):
 
 
 @login_required
-@bloquer_pour_role('chef_equipe', 'production')  # Le Tableau de bord n'est pas dans leur périmètre
+@necessite_droit('tableau_de_bord')
 def liste_interventions(request):
     # On récupère toutes les pannes de la plus récente à la plus ancienne
     interventions = Intervention.objects.all().order_by('-date_creation')
@@ -62,6 +62,7 @@ def liste_interventions(request):
 
 
 @login_required
+@necessite_droit('changer_statut_intervention')
 def changer_statut(request, id_intervention):
     if request.method == 'POST':
         # 1. On récupère l'intervention concernée
@@ -91,7 +92,7 @@ def changer_statut(request, id_intervention):
 
 
 @login_required
-@bloquer_pour_role('chef_equipe', 'production', 'technicien')  # Analyse & Temps d'arrêt : hors périmètre
+@necessite_droit('analyse_temps_arret')
 def statistiques_machines(request):
     # 1. Récupérer le filtre temporel choisi par l'utilisateur (par défaut: mois)
     periode = request.GET.get('periode', 'mois')
@@ -162,16 +163,18 @@ def statistiques_machines(request):
 # =====================================================================
 
 @login_required
+@necessite_droit('maintenance_preventive_consulter')
 def maintenance_preventive(request):
     """Onglet Maintenance > Maintenance Préventive : calendrier permettant
     de programmer des interventions de maintenance préventive sur une
-    machine, à une date/heure donnée. Le Chef d'équipe et Production/Opérateur
-    peuvent consulter cette page (calendrier + historique) mais ne peuvent
-    pas programmer de nouvelle intervention : la case est cochée ici (POST)
-    plutôt que de masquer seulement le bouton côté template, pour bloquer
-    aussi un envoi direct du formulaire."""
+    machine, à une date/heure donnée. Certains rôles peuvent consulter cette
+    page (calendrier + historique) sans pouvoir programmer de nouvelle
+    intervention (droit 'maintenance_preventive_programmer', voir la page
+    d'administration des droits) : la case est vérifiée ici (POST) plutôt
+    que de masquer seulement le bouton côté template, pour bloquer aussi un
+    envoi direct du formulaire."""
     if request.method == 'POST':
-        if getattr(request.user, 'role', None) in ('chef_equipe', 'production') and not request.user.is_superuser:
+        if not a_le_droit(request.user, 'maintenance_preventive_programmer'):
             messages.error(request, "Action refusée : la programmation d'une maintenance préventive n'est pas disponible pour ton rôle.")
             return redirect('maintenance_preventive')
 
@@ -224,6 +227,7 @@ def maintenance_preventive(request):
 
 
 @login_required
+@necessite_droit('maintenance_preventive_consulter')
 def evenements_preventifs(request):
     """Renvoie en JSON les interventions préventives programmées, au
     format attendu par FullCalendar (utilisé par maintenance_preventive.html)."""
@@ -255,6 +259,7 @@ def evenements_preventifs(request):
 
 
 @login_required
+@necessite_droit('maintenance_curative')
 def maintenance_curative(request):
     """Onglet Maintenance > Maintenance Curative : liste toutes les
     déclarations de panne, regroupées par machine, afin de constituer un
@@ -281,7 +286,7 @@ def maintenance_curative(request):
 
 
 @login_required
-@bloquer_pour_role('chef_equipe', 'production', 'technicien')  # Analyse (camembert préventif/curatif) : hors périmètre
+@necessite_droit('analyse_preventif_curatif')
 def maintenance_analyse(request):
     """Onglet Maintenance > Analyse : camembert affichant le pourcentage
     d'interventions préventives vs curatives."""
@@ -311,6 +316,7 @@ def maintenance_analyse(request):
 # =====================================================================
 
 @login_required
+@necessite_droit('service_generaux_batiment')
 def service_generaux_batiment(request):
     """Onglet Service Généraux > Bâtiment : liste toutes les interventions
     (préventives et curatives) des équipements rattachés à la Zone
@@ -326,6 +332,7 @@ def service_generaux_batiment(request):
 
 
 @login_required
+@necessite_droit('service_generaux_batiment')
 def service_generaux_preventif(request):
     """Onglet Service Généraux > Bâtiment > Préventif : calendrier des
     maintenances préventives programmées pour les équipements de la zone
@@ -344,6 +351,7 @@ def service_generaux_preventif(request):
 
 
 @login_required
+@necessite_droit('service_generaux_batiment')
 def evenements_preventifs_batiment(request):
     """Renvoie en JSON les interventions préventives programmées pour les
     équipements de la zone "Batiment", au format attendu par FullCalendar
@@ -378,6 +386,7 @@ def evenements_preventifs_batiment(request):
 # =====================================================================
 
 @login_required
+@necessite_droit('amelioration')
 def amelioration(request):
     """Onglet Amélioration (sous Déclarer une panne) : formulaire pour
     soumettre une demande d'amélioration sur une machine ou sur le
@@ -416,6 +425,7 @@ def amelioration(request):
 
 
 @login_required
+@necessite_droit('changer_statut_amelioration')
 def changer_statut_amelioration(request, id_demande):
     """Met à jour le statut d'une demande d'amélioration depuis
     l'historique de l'onglet Amélioration."""

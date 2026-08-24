@@ -15,7 +15,7 @@ from .models import Machine, Zone, PieceDetachee, Section, DepenseBudget, Contra
 # vues (jamais dans models.py) pour éviter tout risque d'import circulaire
 # entre les deux apps.
 from interventions.models import InterventionPiece
-from utilisateurs.decorators import bloquer_pour_role
+from utilisateurs.permissions import necessite_droit
 
 MOIS_CHOICES = [
     (1, 'Janvier'), (2, 'Février'), (3, 'Mars'), (4, 'Avril'),
@@ -25,7 +25,7 @@ MOIS_CHOICES = [
 
 
 @login_required
-@bloquer_pour_role('chef_equipe', 'production')  # Stock de Pièces : hors périmètre
+@necessite_droit('stock_pieces')
 def stock_pieces(request):
     """Affiche le stock de pièces détachées (onglet "Stock de Pièces"),
     avec une recherche simple (nom, référence, machine compatible) et
@@ -49,7 +49,7 @@ def stock_pieces(request):
 
 
 @login_required
-@bloquer_pour_role('chef_equipe', 'production')  # Idem : dépend de Stock de Pièces
+@necessite_droit('stock_pieces')
 def ajuster_stock(request, id_piece):
     """Ajoute ou retire une quantité du stock d'une pièce depuis la page
     Stock de Pièces, sans passer par l'admin Django."""
@@ -92,7 +92,7 @@ def ajuster_stock(request, id_piece):
 
 
 @login_required
-@bloquer_pour_role('chef_equipe', 'production')  # Idem : dépend de Stock de Pièces
+@necessite_droit('stock_pieces')
 def ajouter_piece(request):
     """Ajoute une toute nouvelle pièce au catalogue depuis la page Stock de
     Pièces (jusqu'ici possible uniquement depuis l'admin Django). La page
@@ -148,7 +148,7 @@ def ajouter_piece(request):
 
 
 @login_required
-@bloquer_pour_role('chef_equipe', 'production')  # Idem : dépend de Stock de Pièces
+@necessite_droit('stock_pieces')
 def supprimer_piece(request, id_piece):
     """Supprime une pièce du catalogue depuis la page Stock de Pièces."""
     piece = get_object_or_404(PieceDetachee, id=id_piece)
@@ -174,7 +174,7 @@ def supprimer_piece(request, id_piece):
 
 
 @login_required
-@bloquer_pour_role('chef_equipe', 'production', 'technicien')  # Budget Machine : hors périmètre
+@necessite_droit('budget_machine')
 def budget_machine(request):
     """Onglet Budget > Budget Machine : calcule, pour chaque machine, le
     coût des pièces détachées utilisées (quantité utilisée x prix unitaire,
@@ -253,7 +253,7 @@ def budget_machine(request):
 
 
 @login_required
-@bloquer_pour_role('chef_equipe', 'production', 'technicien')  # Consommable / Entretien / Travaux Neuf : hors périmètre
+@necessite_droit('budget_sections')
 def budget_section(request, code):
     """Onglet Budget > Consommable / Entretien / Travaux Neuf : historique
     des dépenses rattachées à une Section budgétaire donnée (voir Section
@@ -341,7 +341,7 @@ def budget_section(request, code):
 # =====================================================================
 
 @login_required
-@bloquer_pour_role('chef_equipe', 'production')  # Parc Machine : réservé à Admin et Technicien
+@necessite_droit('machine_parc')
 def parc_machines(request):
     """Onglet Maintenance > Machine : liste du parc machine, avec ajout et
     suppression directement depuis la page (réservé à Admin et Technicien)."""
@@ -355,7 +355,7 @@ def parc_machines(request):
 
 
 @login_required
-@bloquer_pour_role('chef_equipe', 'production')  # Idem : dépend de Parc Machine
+@necessite_droit('machine_parc')
 def ajouter_machine(request):
     """Ajoute une nouvelle machine au parc depuis l'onglet Machine (jusqu'ici
     possible uniquement depuis l'admin Django)."""
@@ -391,7 +391,7 @@ def ajouter_machine(request):
 
 
 @login_required
-@bloquer_pour_role('chef_equipe', 'production')  # Idem : dépend de Parc Machine
+@necessite_droit('machine_parc')
 def supprimer_machine(request, id_machine):
     """Supprime une machine du parc depuis l'onglet Machine."""
     machine = get_object_or_404(Machine, id=id_machine)
@@ -422,7 +422,7 @@ def supprimer_machine(request, id_machine):
 # =====================================================================
 
 @login_required
-@bloquer_pour_role('chef_equipe', 'production', 'technicien')  # Contrats : même périmètre que le reste de l'onglet Budget
+@necessite_droit('contrats')
 def contrats(request):
     """Onglet Budget > Contrats : liste des contrats prestataires
     (maintenance, assurance, location...), avec ajout (document PDF/image
@@ -475,7 +475,7 @@ def contrats(request):
 
 
 @login_required
-@bloquer_pour_role('chef_equipe', 'production', 'technicien')  # Idem : dépend de Contrats
+@necessite_droit('contrats')
 def supprimer_contrat(request, id_contrat):
     """Supprime un contrat (et son document associé, voir le signal
     pre_delete dans machines/models.py) depuis l'onglet Contrats."""
@@ -490,11 +490,11 @@ def supprimer_contrat(request, id_contrat):
 
 
 @login_required
-@bloquer_pour_role('chef_equipe', 'production', 'technicien')  # Idem : dépend de Contrats
+@necessite_droit('contrats')
 def telecharger_contrat_document(request, id_contrat):
     """Sert le document (PDF/image) d'un contrat. Passe par une vue plutôt
     que par une URL /media/ publique, pour rester derrière @login_required
-    et bloquer_pour_role comme le reste de l'onglet Budget (voir MEDIA_URL
+    et necessite_droit comme le reste de l'onglet Budget (voir MEDIA_URL
     dans settings.py)."""
     contrat = get_object_or_404(Contrat, id=id_contrat)
     if not contrat.document:

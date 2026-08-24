@@ -19,7 +19,7 @@
         <p class="text-sm font-medium text-gray-600 mb-4">📍 {{ intervention.machine.code_interne }} - {{ intervention.machine.nom }}</p>
         <p class="text-gray-700 text-sm mb-6">{{ intervention.description }}</p>
 
-        {% if intervention.statut != 'resolu' %}
+        {% if intervention.statut != 'resolu' and 'changer_statut_intervention' in droits_utilisateur %}
         <form method="POST" action="{% url 'changer_statut' intervention.id %}">
             {% csrf_token %}
             <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded text-sm transition">

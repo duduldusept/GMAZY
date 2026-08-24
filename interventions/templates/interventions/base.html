@@ -22,49 +22,56 @@
         </div>
 
         <nav class="p-3 space-y-0.5">
-            {% if user.role != 'chef_equipe' and user.role != 'production' %}
+            {% if 'tableau_de_bord' in droits_utilisateur %}
             <a href="{% url 'liste_interventions' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
                 🛠️ Tableau de bord
             </a>
             {% endif %}
-            {% if user.role != 'chef_equipe' and user.role != 'production' and user.role != 'technicien' %}
-            <a href="{% url 'statistiques' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
-                📊 Analyse & Temps d'arrêt
-            </a>
-            {% endif %}
-            {% if user.role != 'production' %}
+            {% if 'declarer_panne' in droits_utilisateur %}
             <a href="{% url 'declarer_panne' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm text-red-400">
                 ⚠️ Déclarer une panne
             </a>
             {% endif %}
+            {% if 'amelioration' in droits_utilisateur %}
             <a href="{% url 'amelioration' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
                 💡 Amélioration
-            </a>
-            {% if user.role != 'chef_equipe' and user.role != 'production' %}
-            <a href="{% url 'stock_pieces' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
-                📦 Stock de Pièces
             </a>
             {% endif %}
 
             <div class="pt-2 border-t border-slate-800 my-1"></div>
             <p class="px-3 text-xs uppercase tracking-wider text-slate-500 font-bold mb-0.5">Maintenance</p>
+            {% if 'maintenance_preventive_consulter' in droits_utilisateur %}
             <a href="{% url 'maintenance_preventive' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
                 🗓️ Maintenance Préventive
             </a>
+            {% endif %}
+            {% if 'maintenance_curative' in droits_utilisateur %}
             <a href="{% url 'maintenance_curative' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
                 🚨 Maintenance Curative
             </a>
-            {% if user.role != 'chef_equipe' and user.role != 'production' %}
+            {% endif %}
+            {% if 'machine_parc' in droits_utilisateur %}
             <a href="{% url 'parc_machines' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
                 🏭 Machine
             </a>
             {% endif %}
-            {% if user.role != 'chef_equipe' and user.role != 'production' and user.role != 'technicien' %}
+            {% if 'stock_pieces' in droits_utilisateur %}
+            <a href="{% url 'stock_pieces' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                📦 Stock de Pièces
+            </a>
+            {% endif %}
+            {% if 'analyse_preventif_curatif' in droits_utilisateur %}
             <a href="{% url 'maintenance_analyse' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
                 🥧 Analyse
             </a>
             {% endif %}
+            {% if 'analyse_temps_arret' in droits_utilisateur %}
+            <a href="{% url 'statistiques' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                📊 Analyse des Temps d'arrêt
+            </a>
+            {% endif %}
 
+            {% if 'service_generaux_batiment' in droits_utilisateur %}
             <div class="pt-2 border-t border-slate-800 my-1"></div>
             <p class="px-3 text-xs uppercase tracking-wider text-slate-500 font-bold mb-0.5">Service Généraux</p>
             <a href="{% url 'service_generaux_batiment' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
@@ -73,13 +80,17 @@
             <a href="{% url 'service_generaux_preventif' %}" class="flex items-center gap-2 pl-8 pr-3 py-1.5 rounded-md hover:bg-slate-800 transition font-medium text-xs text-slate-300">
                 🗓️ Préventif
             </a>
+            {% endif %}
 
-            {% if user.role != 'chef_equipe' and user.role != 'production' and user.role != 'technicien' %}
+            {% if 'budget_machine' in droits_utilisateur or 'budget_sections' in droits_utilisateur or 'contrats' in droits_utilisateur %}
             <div class="pt-2 border-t border-slate-800 my-1"></div>
             <p class="px-3 text-xs uppercase tracking-wider text-slate-500 font-bold mb-0.5">Budget</p>
+            {% if 'budget_machine' in droits_utilisateur %}
             <a href="{% url 'budget_machine' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
                 💰 Budget Machine
             </a>
+            {% endif %}
+            {% if 'budget_sections' in droits_utilisateur %}
             <a href="{% url 'budget_section' 'consommable' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
                 🧴 Consommable
             </a>
@@ -89,14 +100,20 @@
             <a href="{% url 'budget_section' 'travaux_neuf' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
                 🏗️ Travaux Neuf
             </a>
+            {% endif %}
+            {% if 'contrats' in droits_utilisateur %}
             <a href="{% url 'contrats' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
                 📄 Contrats
             </a>
+            {% endif %}
             {% endif %}
 
             {% if user.role == 'admin' or user.is_superuser %}
             <div class="pt-2 border-t border-slate-800 my-1"></div>
             <p class="px-3 text-xs uppercase tracking-wider text-slate-500 font-bold mb-0.5">Administration</p>
+            <a href="{% url 'gestion_droits' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm text-blue-400">
+                🔐 Gestion des droits
+            </a>
             <a href="/admin/" target="_blank" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm text-blue-400">
                 👤 Gestion (Machines/Users)
             </a>

@@ -7,7 +7,7 @@
             <h1 class="text-3xl font-bold text-gray-800">🚨 Maintenance Curative</h1>
             <p class="text-sm text-gray-500 mt-1">Historique des pannes déclarées, classées par machine.</p>
         </div>
-        {% if user.role != 'production' %}
+        {% if 'declarer_panne' in droits_utilisateur %}
         <a href="{% url 'declarer_panne' %}" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition whitespace-nowrap">
             ⚠️ Déclarer une panne
         </a>

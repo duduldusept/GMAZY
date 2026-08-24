@@ -93,6 +93,11 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # Expose `droits_utilisateur` (ensemble des codes de
+                # Fonctionnalite accessibles à l'utilisateur connecté) à
+                # tous les templates, pour piloter l'affichage du menu
+                # (voir base.html) depuis la matrice éditable par l'admin.
+                'utilisateurs.permissions.droits_utilisateur',
             ],
         },
     },

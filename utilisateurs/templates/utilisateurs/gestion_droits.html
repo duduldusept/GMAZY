@@ -1,0 +1,50 @@
+{% extends 'interventions/base.html' %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <header class="mb-8 pb-4 border-b">
+        <h1 class="text-3xl font-bold text-gray-800">🔐 Gestion des droits</h1>
+        <p class="text-sm text-gray-500 mt-1">Coche les cases pour autoriser l'accès à une page/action pour un rôle donné. Un administrateur ou un superutilisateur a toujours accès à tout, quelles que soient ces cases.</p>
+    </header>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        {% for categorie, lignes in categories.items %}
+        <div class="bg-white rounded-lg shadow border mb-6 overflow-hidden">
+            <div class="px-6 py-3 border-b bg-slate-50">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-600">{{ categorie }}</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-900 text-white uppercase text-xs">
+                        <tr>
+                            <th class="px-4 py-3">Page / Action</th>
+                            {% for role_code, role_nom in roles %}
+                            <th class="px-4 py-3 text-center">{{ role_nom }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for fonctionnalite, lignes_role in lignes %}
+                        <tr>
+                            <td class="px-4 py-3 font-medium text-gray-900">{{ fonctionnalite.nom }}</td>
+                            {% for role_code, role_nom, autorise in lignes_role %}
+                            <td class="px-4 py-3 text-center">
+                                <input type="checkbox" name="droit_{{ fonctionnalite.id }}_{{ role_code }}" {% if autorise %}checked{% endif %} class="w-4 h-4 accent-slate-900 cursor-pointer">
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+
+        <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-6 rounded-md transition">
+            Enregistrer les droits
+        </button>
+    </form>
+</div>
+{% endblock %}
