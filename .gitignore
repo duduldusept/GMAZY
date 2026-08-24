@@ -20,6 +20,9 @@ __pycache__/
 # Fichiers statiques collectés (générés, pas à committer)
 staticfiles/
 
+# Documents de contrats uploadés (données réelles, ne doit pas être public)
+media/
+
 # NSSM (téléchargé automatiquement par installer_service.ps1, pas à committer)
 nssm/
 

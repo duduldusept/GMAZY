@@ -6,8 +6,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, F, Sum, DecimalField, ExpressionWrapper
 from django.db.models.functions import Coalesce
+from django.http import FileResponse, Http404
+from django.utils.dateparse import parse_date
 
-from .models import Machine, Zone, PieceDetachee, Section, DepenseBudget
+from .models import Machine, Zone, PieceDetachee, Section, DepenseBudget, Contrat
 # InterventionPiece vit dans l'app interventions (table de liaison entre une
 # Intervention et une PieceDetachee). On l'importe ici uniquement dans les
 # vues (jamais dans models.py) pour éviter tout risque d'import circulaire
@@ -413,3 +415,93 @@ def supprimer_machine(request, id_machine):
             messages.success(request, f"Machine « {nom} » supprimée du parc.")
 
     return redirect('parc_machines')
+
+
+# =====================================================================
+# ONGLET BUDGET > CONTRATS
+# =====================================================================
+
+@login_required
+@bloquer_pour_role('chef_equipe', 'production', 'technicien')  # Contrats : même périmètre que le reste de l'onglet Budget
+def contrats(request):
+    """Onglet Budget > Contrats : liste des contrats prestataires
+    (maintenance, assurance, location...), avec ajout (document PDF/image
+    optionnel) et suppression directement depuis la page."""
+    if request.method == 'POST':
+        prestataire = (request.POST.get('prestataire') or '').strip()
+        type_contrat = request.POST.get('type_contrat', 'autre')
+        if type_contrat not in dict(Contrat.TYPE_CHOICES):
+            type_contrat = 'autre'
+
+        prix_brut = (request.POST.get('prix') or '').strip()
+        try:
+            prix = Decimal(prix_brut.replace(',', '.'))
+        except (InvalidOperation, AttributeError):
+            prix = None
+
+        date_debut = parse_date(request.POST.get('date_debut', ''))
+        date_fin_brute = request.POST.get('date_fin', '')
+        date_fin = parse_date(date_fin_brute) if date_fin_brute else None
+
+        description = request.POST.get('description', '')
+        document = request.FILES.get('document')
+
+        if not prestataire or prix is None or prix <= 0 or not date_debut:
+            messages.error(request, "Merci d'indiquer au moins un prestataire, un prix valide (supérieur à 0) et une date de début.")
+        elif date_fin and date_fin < date_debut:
+            messages.error(request, "La date de fin ne peut pas être antérieure à la date de début.")
+        else:
+            Contrat.objects.create(
+                prestataire=prestataire,
+                type_contrat=type_contrat,
+                prix=prix,
+                date_debut=date_debut,
+                date_fin=date_fin,
+                description=description,
+                document=document,
+            )
+            messages.success(request, f"Contrat avec « {prestataire} » ajouté.")
+
+        return redirect('contrats')
+
+    liste_contrats = Contrat.objects.all()
+
+    context = {
+        'contrats': liste_contrats,
+        'type_choices': Contrat.TYPE_CHOICES,
+        'aujourdhui': date.today(),
+    }
+    return render(request, 'machines/contrats.html', context)
+
+
+@login_required
+@bloquer_pour_role('chef_equipe', 'production', 'technicien')  # Idem : dépend de Contrats
+def supprimer_contrat(request, id_contrat):
+    """Supprime un contrat (et son document associé, voir le signal
+    pre_delete dans machines/models.py) depuis l'onglet Contrats."""
+    contrat = get_object_or_404(Contrat, id=id_contrat)
+
+    if request.method == 'POST':
+        prestataire = contrat.prestataire
+        contrat.delete()
+        messages.success(request, f"Contrat avec « {prestataire} » supprimé.")
+
+    return redirect('contrats')
+
+
+@login_required
+@bloquer_pour_role('chef_equipe', 'production', 'technicien')  # Idem : dépend de Contrats
+def telecharger_contrat_document(request, id_contrat):
+    """Sert le document (PDF/image) d'un contrat. Passe par une vue plutôt
+    que par une URL /media/ publique, pour rester derrière @login_required
+    et bloquer_pour_role comme le reste de l'onglet Budget (voir MEDIA_URL
+    dans settings.py)."""
+    contrat = get_object_or_404(Contrat, id=id_contrat)
+    if not contrat.document:
+        raise Http404("Ce contrat n'a pas de document associé.")
+
+    return FileResponse(
+        contrat.document.open('rb'),
+        as_attachment=False,
+        filename=contrat.document.name.rsplit('/', 1)[-1],
+    )

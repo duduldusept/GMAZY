@@ -1,0 +1,147 @@
+{% extends 'interventions/base.html' %}
+
+{% block content %}
+<header class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8 pb-4">
+    <div>
+        <h1 class="text-3xl font-bold text-gray-800">📄 Contrats</h1>
+        <p class="text-sm text-gray-500 mt-1">Contrats prestataires : maintenance, assurance, location...</p>
+    </div>
+
+    <button type="button" onclick="ouvrirModalContrat()" class="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-md text-sm transition whitespace-nowrap">
+        + Ajouter un contrat
+    </button>
+</header>
+
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="w-full text-sm text-left">
+        <thead class="bg-slate-900 text-white uppercase text-xs">
+            <tr>
+                <th class="px-4 py-3">Prestataire</th>
+                <th class="px-4 py-3">Type</th>
+                <th class="px-4 py-3 text-right">Prix</th>
+                <th class="px-4 py-3">Durée</th>
+                <th class="px-4 py-3 text-center">Statut</th>
+                <th class="px-4 py-3 text-center">Document</th>
+                <th class="px-4 py-3 text-center">Supprimer</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for contrat in contrats %}
+            <tr class="{% if contrat.est_expire %}bg-red-50{% endif %}">
+                <td class="px-4 py-3">
+                    <p class="font-semibold text-gray-900">{{ contrat.prestataire }}</p>
+                    {% if contrat.description %}<p class="text-xs text-gray-500">{{ contrat.description|truncatechars:80 }}</p>{% endif %}
+                </td>
+                <td class="px-4 py-3 text-gray-700">{{ contrat.get_type_contrat_display }}</td>
+                <td class="px-4 py-3 text-right font-mono">{{ contrat.prix|floatformat:2 }} €</td>
+                <td class="px-4 py-3 text-gray-700">
+                    <p>{{ contrat.duree_texte }}</p>
+                    <p class="text-xs text-gray-400">
+                        Du {{ contrat.date_debut|date:"d/m/Y" }}{% if contrat.date_fin %} au {{ contrat.date_fin|date:"d/m/Y" }}{% endif %}
+                    </p>
+                </td>
+                <td class="px-4 py-3 text-center">
+                    {% if contrat.est_expire %}
+                        <span class="px-2 py-1 rounded-full text-xs font-bold bg-red-600 text-white">Expiré</span>
+                    {% else %}
+                        <span class="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">Actif</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-center">
+                    {% if contrat.document %}
+                    <a href="{% url 'telecharger_contrat_document' contrat.id %}" target="_blank" class="text-blue-600 hover:text-blue-800 font-semibold text-xs underline">
+                        📎 Voir
+                    </a>
+                    {% else %}
+                    <span class="text-gray-300 text-xs">—</span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3 text-center">
+                    <form method="POST" action="{% url 'supprimer_contrat' contrat.id %}" class="form-supprimer-contrat" data-nom="{{ contrat.prestataire }}">
+                        {% csrf_token %}
+                        <button type="submit" class="bg-gray-200 hover:bg-red-600 hover:text-white text-gray-600 text-xs font-bold py-1 px-2 rounded transition" title="Supprimer le contrat">
+                            🗑️
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="px-4 py-8 text-center text-gray-500">Aucun contrat enregistré pour le moment.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal d'ajout d'un contrat -->
+<div id="modal-ajouter-contrat" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">📄 Ajouter un contrat</h2>
+        <form method="POST" action="{% url 'contrats' %}" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nom du prestataire *</label>
+                <input type="text" name="prestataire" required placeholder="Ex: ACME Maintenance" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Type de contrat</label>
+                <select name="type_contrat" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:outline-none">
+                    {% for valeur, libelle in type_choices %}
+                        <option value="{{ valeur }}" {% if valeur == 'autre' %}selected{% endif %}>{{ libelle }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Prix (€) *</label>
+                <input type="number" name="prix" step="0.01" min="0.01" required placeholder="0.00" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Date de début *</label>
+                    <input type="date" name="date_debut" value="{{ aujourdhui|date:'Y-m-d' }}" required class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Date de fin</label>
+                    <input type="date" name="date_fin" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:outline-none">
+                </div>
+            </div>
+            <p class="text-xs text-gray-400 -mt-2">Laisser la date de fin vide si le contrat est à durée indéterminée / reconduction tacite.</p>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Document (PDF ou image, optionnel)</label>
+                <input type="file" name="document" accept=".pdf,.jpg,.jpeg,.png,.webp" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:outline-none text-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea name="description" rows="3" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:outline-none"></textarea>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="fermerModalContrat()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-md transition">Annuler</button>
+                <button type="submit" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-md transition">Ajouter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function ouvrirModalContrat() {
+        const modal = document.getElementById('modal-ajouter-contrat');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+    function fermerModalContrat() {
+        const modal = document.getElementById('modal-ajouter-contrat');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    document.querySelectorAll('.form-supprimer-contrat').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            const nom = form.dataset.nom || 'ce contrat';
+            if (!confirm('Supprimer définitivement le contrat avec « ' + nom + ' » ?')) {
+                e.preventDefault();
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Machine, Zone, PieceDetachee, Section, DepenseBudget
+from .models import Machine, Zone, PieceDetachee, Section, DepenseBudget, Contrat
 
 @admin.register(Zone)
 class ZoneAdmin(admin.ModelAdmin):
@@ -30,3 +30,10 @@ class DepenseBudgetAdmin(admin.ModelAdmin):
     list_filter = ['section', 'machine']
     search_fields = ['titre', 'description']
     date_hierarchy = 'date_depense'
+
+@admin.register(Contrat)
+class ContratAdmin(admin.ModelAdmin):
+    list_display = ['prestataire', 'type_contrat', 'prix', 'date_debut', 'date_fin', 'est_expire', 'document']
+    list_filter = ['type_contrat']
+    search_fields = ['prestataire', 'description']
+    date_hierarchy = 'date_debut'

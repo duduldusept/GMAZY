@@ -143,10 +143,28 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 STORAGES = {
+    # BUGFIX : Django exige une entrée 'default' dès que STORAGES est défini
+    # explicitement (sinon tout FileField/ImageField plante avec
+    # InvalidStorageError au premier enregistrement, y compris Contrat.document
+    # ci-dessous). Sans cette entrée, Django ne retombe PAS silencieusement
+    # sur FileSystemStorage : il lève une erreur.
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
     'staticfiles': {
         'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },
 }
+
+# Fichiers uploadés par les utilisateurs (ex: documents de contrats, voir
+# machines.models.Contrat). Contrairement aux fichiers statiques, ils ne
+# sont PAS servis via une URL publique /media/ : whitenoise ne sert que
+# STATIC_ROOT, et exposer /media/ directement contournerait le contrôle
+# d'accès (@login_required). Ils sont donc servis uniquement via une vue
+# dédiée (machines.views.telecharger_contrat_document), qui lit le fichier
+# depuis MEDIA_ROOT sur le disque.
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 AUTH_USER_MODEL = 'utilisateurs.Utilisateur'
 LOGIN_URL = 'connexion'
