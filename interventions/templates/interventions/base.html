@@ -89,6 +89,9 @@
             <a href="{% url 'budget_section' 'travaux_neuf' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
                 🏗️ Travaux Neuf
             </a>
+            <a href="{% url 'contrats' %}" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-800 transition font-medium text-sm">
+                📄 Contrats
+            </a>
             {% endif %}
 
             {% if user.role == 'admin' or user.is_superuser %}
@@ -109,8 +112,16 @@
     </div>
 {% if messages %}
         {% for message in messages %}
-            <div id="popup-alert" class="fixed bottom-5 right-5 max-w-md p-4 rounded-lg shadow-2xl flex items-center gap-3 transform translate-y-0 transition-all duration-300 z-50
-                {% if message.tags == 'error' %}bg-red-600 text-white{% else %}bg-green-600 text-white{% endif %}">
+            <!-- BUGFIX : chaque popup avait le même id="popup-alert". Avec
+                 plusieurs messages en attente, getElementById ne renvoyait
+                 que le premier : lui seul se fermait (auto ou au clic), les
+                 suivants restaient bloqués à l'écran. On utilise désormais
+                 une classe (identifiant potentiellement plusieurs éléments)
+                 et on décale chaque popup verticalement pour qu'elles ne se
+                 superposent pas. -->
+            <div class="popup-alert fixed right-5 max-w-md p-4 rounded-lg shadow-2xl flex items-center gap-3 transform translate-y-0 transition-all duration-300 z-50
+                {% if message.tags == 'error' %}bg-red-600 text-white{% else %}bg-green-600 text-white{% endif %}"
+                style="bottom: calc(1.25rem + {{ forloop.counter0 }} * 4.5rem);">
 
                 <div class="text-xl">
                     {% if message.tags == 'error' %}⚠️{% else %}✅{% endif %}
@@ -118,17 +129,15 @@
                 <div>
                     <p class="text-sm font-semibold">{{ message }}</p>
                 </div>
-                <button onclick="fermerPopup()" class="ml-auto bg-black bg-opacity-20 hover:bg-opacity-40 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold transition">
+                <button onclick="fermerPopup(this.closest('.popup-alert'))" class="ml-auto bg-black bg-opacity-20 hover:bg-opacity-40 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold transition">
                     ✕
                 </button>
             </div>
         {% endfor %}
 
         <script>
-            const alertBox = document.getElementById('popup-alert');
-
-            // Fonction pour fermer manuellement au clic sur la croix
-            function fermerPopup() {
+            // Fonction pour fermer manuellement au clic sur la croix (ou automatiquement, voir plus bas)
+            function fermerPopup(alertBox) {
                 if (alertBox) {
                     alertBox.style.opacity = '0';
                     // BUGFIX : l'élément n'était jamais retiré du DOM, il
@@ -138,8 +147,10 @@
                 }
             }
 
-            // Fermeture automatique après 5 secondes (5000 millisecondes)
-            setTimeout(fermerPopup, 5000);
+            // Fermeture automatique de chaque popup après 5 secondes (5000 millisecondes)
+            document.querySelectorAll('.popup-alert').forEach(function (alertBox) {
+                setTimeout(() => fermerPopup(alertBox), 5000);
+            });
         </script>
     {% endif %}
 

@@ -1,5 +1,8 @@
 from django.db import models
 from django.conf import settings
+from django.db.models import F
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
 from django.utils import timezone
 from machines.models import Machine, PieceDetachee  # On importe Machine et PieceDetachee
 
@@ -158,24 +161,63 @@ class InterventionPiece(models.Model):
     def __str__(self):
         return f"{self.quantite_utilisee}x {self.piece.nom}"
 
-    # Logique automatique : On déduit la quantité du stock lorsque le technicien valide
+    # Logique automatique : On déduit la quantité du stock lorsque le technicien valide.
+    #
+    # BUGFIX : la version précédente ne touchait au stock qu'à la création
+    # (`if not self.pk`), donc modifier la quantité d'une ligne déjà
+    # enregistrée (ex: 2 -> 5 pièces via l'inline de l'admin) ne déduisait
+    # jamais la différence du stock. On calcule maintenant un delta par
+    # rapport à l'état précédent en base (et on gère aussi le cas, plus
+    # rare, où on change la pièce elle-même sur une ligne existante).
     def save(self, *args, **kwargs):
-        if not self.pk:  # Seulement lors de la création initiale du lien
-            # BUGFIX : on vérifie maintenant qu'il y a assez de stock avant
-            # de décrémenter, pour éviter un stock négatif silencieux.
+        ancienne_piece_id = None
+        ancienne_quantite = 0
+        if self.pk:
+            ancienne_piece_id, ancienne_quantite = InterventionPiece.objects.filter(
+                pk=self.pk
+            ).values_list('piece_id', 'quantite_utilisee').first()
+
+        if ancienne_piece_id == self.piece_id:
+            delta = self.quantite_utilisee - ancienne_quantite
+            if delta > 0 and delta > self.piece.quantite_stock:
+                raise ValueError(
+                    f"Stock insuffisant pour « {self.piece.nom} » : "
+                    f"{self.piece.quantite_stock} disponible(s), "
+                    f"{delta} demandé(s) en plus."
+                )
+            if delta != 0:
+                PieceDetachee.objects.filter(pk=self.piece_id).update(
+                    quantite_stock=F('quantite_stock') - delta
+                )
+        else:
+            if ancienne_piece_id is not None:
+                # On restitue à l'ancienne pièce la quantité qui lui avait été retirée.
+                PieceDetachee.objects.filter(pk=ancienne_piece_id).update(
+                    quantite_stock=F('quantite_stock') + ancienne_quantite
+                )
             if self.quantite_utilisee > self.piece.quantite_stock:
                 raise ValueError(
                     f"Stock insuffisant pour « {self.piece.nom} » : "
                     f"{self.piece.quantite_stock} disponible(s), "
                     f"{self.quantite_utilisee} demandé(s)."
                 )
-            self.piece.quantite_stock -= self.quantite_utilisee
-            self.piece.save()
+            PieceDetachee.objects.filter(pk=self.piece_id).update(
+                quantite_stock=F('quantite_stock') - self.quantite_utilisee
+            )
+
         super().save(*args, **kwargs)
 
-    def delete(self, *args, **kwargs):
-        # BUGFIX : le stock n'était jamais restitué quand une pièce liée à
-        # une intervention était supprimée. On le remet maintenant.
-        self.piece.quantite_stock += self.quantite_utilisee
-        self.piece.save()
-        super().delete(*args, **kwargs)
+
+# BUGFIX : la restitution du stock vivait dans InterventionPiece.delete(),
+# qui n'est jamais appelée quand la ligne est supprimée par cascade (ex:
+# suppression de l'Intervention parente, ou de la Machine dont elle dépend,
+# depuis l'admin Django) : Django supprime alors les lignes liées via une
+# suppression en masse au niveau de la requête, sans passer par la méthode
+# delete() de chaque instance. Un signal pre_delete, lui, est envoyé pour
+# chaque ligne réellement supprimée même dans ce cas, ce qui couvre aussi
+# bien la suppression directe que les suppressions en cascade.
+@receiver(pre_delete, sender=InterventionPiece)
+def restituer_stock_piece_utilisee(sender, instance, **kwargs):
+    PieceDetachee.objects.filter(pk=instance.piece_id).update(
+        quantite_stock=F('quantite_stock') + instance.quantite_utilisee
+    )
