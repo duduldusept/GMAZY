@@ -177,4 +177,9 @@ LOGIN_REDIRECT_URL = 'liste_interventions'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CSRF_TRUSTED_ORIGINS = ['https://*.up.railway.app', 'https://*.vercel.app']
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.up.railway.app',
+    'https://*.vercel.app',
+    'https://gmazy.fr',
+    'https://www.gmazy.fr',
+]
