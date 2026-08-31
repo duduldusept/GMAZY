@@ -7,6 +7,34 @@
         <p class="text-sm text-gray-500 mt-1">Toutes les interventions (préventives et curatives) des équipements de la zone « Bâtiment ».</p>
     </header>
 
+    <form method="GET" class="mb-6 flex flex-wrap items-center gap-3">
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Machine</label>
+            <select name="machine" onchange="this.form.submit()" class="p-2 border border-gray-300 rounded-md">
+                <option value="">Toutes les machines</option>
+                {% for machine in machines %}
+                    <option value="{{ machine.id }}" {% if machine.id == machine_selectionnee %}selected{% endif %}>{{ machine.code_interne }} - {{ machine.nom }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Type</label>
+            <select name="type" onchange="this.form.submit()" class="p-2 border border-gray-300 rounded-md">
+                <option value="" {% if not type_selectionne %}selected{% endif %}>Curatif et préventif</option>
+                <option value="correctif" {% if type_selectionne == 'correctif' %}selected{% endif %}>Curatif (pannes)</option>
+                <option value="preventif" {% if type_selectionne == 'preventif' %}selected{% endif %}>Préventif</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Trier par</label>
+            <select name="tri" onchange="this.form.submit()" class="p-2 border border-gray-300 rounded-md">
+                <option value="-date_creation" {% if tri == '-date_creation' %}selected{% endif %}>Date (récent → ancien)</option>
+                <option value="date_creation" {% if tri == 'date_creation' %}selected{% endif %}>Date (ancien → récent)</option>
+                <option value="machine" {% if tri == 'machine' %}selected{% endif %}>Machine (A → Z)</option>
+            </select>
+        </div>
+    </form>
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         {% for intervention in interventions %}
         <div class="bg-white rounded-lg shadow p-6 border-l-4 {% if intervention.statut == 'a_faire' %}border-red-500{% elif intervention.statut == 'en_cours' %}border-orange-500{% else %}border-green-500{% endif %}">

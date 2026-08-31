@@ -5,7 +5,7 @@ from django.utils.dateparse import parse_datetime
 from django.contrib import messages
 from django.http import HttpResponseForbidden, JsonResponse
 from django.urls import reverse
-from machines.models import Machine
+from machines.models import Machine, Zone
 from .models import Intervention, DemandeAmelioration
 from utilisateurs.permissions import a_le_droit, necessite_droit
 
@@ -261,12 +261,10 @@ def evenements_preventifs(request):
 @login_required
 @necessite_droit('maintenance_curative')
 def maintenance_curative(request):
-    """Onglet Maintenance > Maintenance Curative : liste toutes les
-    déclarations de panne, regroupées par machine, afin de constituer un
-    historique de maintenance curative par équipement."""
-    interventions = Intervention.objects.filter(
-        type_intervention='correctif'
-    ).select_related('machine').order_by('machine__nom', '-date_creation')
+    """Onglet Maintenance > Historique Maintenance : liste toutes les
+    interventions curatives (pannes) et préventives, filtrable par machine,
+    zone et type, triable par date, machine ou zone."""
+    interventions = Intervention.objects.select_related('machine', 'machine__zone')
 
     machine_id = request.GET.get('machine')
     machine_selectionnee = None
@@ -277,10 +275,40 @@ def maintenance_curative(request):
         except (TypeError, ValueError):
             machine_selectionnee = None
 
+    zone_id = request.GET.get('zone')
+    zone_selectionnee = None
+    if zone_id:
+        try:
+            zone_selectionnee = int(zone_id)
+            interventions = interventions.filter(machine__zone_id=zone_selectionnee)
+        except (TypeError, ValueError):
+            zone_selectionnee = None
+
+    type_selectionne = request.GET.get('type')
+    if type_selectionne not in ('correctif', 'preventif'):
+        type_selectionne = ''
+    else:
+        interventions = interventions.filter(type_intervention=type_selectionne)
+
+    tris_valides = {
+        '-date_creation': '-date_creation',
+        'date_creation': 'date_creation',
+        'machine': 'machine__nom',
+        'zone': 'machine__zone__nom',
+    }
+    tri = request.GET.get('tri', '-date_creation')
+    if tri not in tris_valides:
+        tri = '-date_creation'
+    interventions = interventions.order_by(tris_valides[tri])
+
     context = {
         'interventions': interventions,
         'machines': Machine.objects.all().order_by('nom'),
+        'zones': Zone.objects.all().order_by('nom'),
         'machine_selectionnee': machine_selectionnee,
+        'zone_selectionnee': zone_selectionnee,
+        'type_selectionne': type_selectionne,
+        'tri': tri,
     }
     return render(request, 'interventions/maintenance_curative.html', context)
 
@@ -320,13 +348,43 @@ def maintenance_analyse(request):
 def service_generaux_batiment(request):
     """Onglet Service Généraux > Bâtiment : liste toutes les interventions
     (préventives et curatives) des équipements rattachés à la Zone
-    "Batiment" (voir Zone dans machines/models.py)."""
+    "Batiment" (voir Zone dans machines/models.py), filtrable par machine
+    et type, triable par date ou machine."""
     interventions = Intervention.objects.filter(
         machine__zone__nom__icontains='Batiment'
-    ).select_related('machine', 'machine__zone').order_by('-date_creation')
+    ).select_related('machine', 'machine__zone')
+
+    machine_id = request.GET.get('machine')
+    machine_selectionnee = None
+    if machine_id:
+        try:
+            machine_selectionnee = int(machine_id)
+            interventions = interventions.filter(machine_id=machine_selectionnee)
+        except (TypeError, ValueError):
+            machine_selectionnee = None
+
+    type_selectionne = request.GET.get('type')
+    if type_selectionne not in ('correctif', 'preventif'):
+        type_selectionne = ''
+    else:
+        interventions = interventions.filter(type_intervention=type_selectionne)
+
+    tris_valides = {
+        '-date_creation': '-date_creation',
+        'date_creation': 'date_creation',
+        'machine': 'machine__nom',
+    }
+    tri = request.GET.get('tri', '-date_creation')
+    if tri not in tris_valides:
+        tri = '-date_creation'
+    interventions = interventions.order_by(tris_valides[tri])
 
     context = {
         'interventions': interventions,
+        'machines': Machine.objects.filter(zone__nom__icontains='Batiment').order_by('nom'),
+        'machine_selectionnee': machine_selectionnee,
+        'type_selectionne': type_selectionne,
+        'tri': tri,
     }
     return render(request, 'interventions/service_generaux_batiment.html', context)
 
