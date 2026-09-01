@@ -5,8 +5,9 @@ from django.utils.dateparse import parse_datetime
 from django.contrib import messages
 from django.http import HttpResponseForbidden, JsonResponse
 from django.urls import reverse
-from machines.models import Machine, Zone
-from .models import Intervention, DemandeAmelioration
+from django.db import transaction
+from machines.models import Machine, Zone, PieceDetachee
+from .models import Intervention, DemandeAmelioration, InterventionPiece
 from utilisateurs.permissions import a_le_droit, necessite_droit
 
 # CORRECTIF SÉCURITÉ : on ne fournit plus les listes Python brutes au
@@ -58,36 +59,81 @@ def declarer_panne(request):
 def liste_interventions(request):
     # On récupère toutes les pannes de la plus récente à la plus ancienne
     interventions = Intervention.objects.all().order_by('-date_creation')
-    return render(request, 'interventions/liste_interventions.html', {'interventions': interventions})
+    # Pièces disponibles proposées dans la fenêtre de résolution (voir resoudre_intervention)
+    pieces_stock = PieceDetachee.objects.all().order_by('nom')
+    return render(request, 'interventions/liste_interventions.html', {
+        'interventions': interventions,
+        'pieces_stock': pieces_stock,
+    })
 
 
 @login_required
 @necessite_droit('changer_statut_intervention')
 def changer_statut(request, id_intervention):
+    """Fait passer une intervention de "À faire" à "En cours" (prise en
+    charge, accessible à tout le monde). Le passage à "Résolu" se fait
+    désormais via resoudre_intervention, qui recueille le compte-rendu et
+    les pièces éventuellement utilisées avant de clôturer."""
     if request.method == 'POST':
-        # 1. On récupère l'intervention concernée
         # BUGFIX : get_object_or_404 évite une erreur 500 si l'ID n'existe pas
         intervention = get_object_or_404(Intervention, id=id_intervention)
 
-        # 2. Passage de "À faire" à "En cours" (Accessible à tout le monde)
         if intervention.statut == 'a_faire':
             intervention.statut = 'en_cours'
             intervention.save()
             messages.success(request, f"L'intervention #{intervention.id} a été prise en charge.")
 
-        # 3. Passage de "En cours" à "Résolu" (Sécurisé par Groupe / Permission)
-        elif intervention.statut == 'en_cours':
-            # On vérifie si l'utilisateur a la permission via son groupe OU s'il est superadmin
-            if request.user.has_perm('interventions.can_close_intervention') or request.user.is_superuser:
-                intervention.statut = 'resolu'
-                intervention.date_resolution = timezone.now()  # Enregistre l'heure de fin pour le graphique
-                intervention.save()
-                messages.success(request, f"L'intervention #{intervention.id} a été clôturée avec succès !")
-            else:
-                # Si l'utilisateur n'a pas le droit, on crée le message d'erreur pour le pop-up
-                messages.error(request, "Action refusée : Vous devez faire partie du groupe autorisé pour clôturer.")
-
     # Dans tous les cas, on redirige sagement vers le tableau de bord sans casser la page
+    return redirect('liste_interventions')
+
+
+@login_required
+@necessite_droit('changer_statut_intervention')
+def resoudre_intervention(request, id_intervention):
+    """Clôture une intervention "En cours" depuis la fenêtre de résolution
+    du tableau de bord : indique si des pièces ont été utilisées (et les
+    déduit du stock via InterventionPiece, qui gère déjà la validation et
+    la déduction - voir models.py), et enregistre le compte-rendu."""
+    intervention = get_object_or_404(Intervention, id=id_intervention)
+
+    if request.method == 'POST':
+        if intervention.statut != 'en_cours':
+            messages.error(request, "Cette intervention ne peut pas être résolue dans son état actuel.")
+            return redirect('liste_interventions')
+
+        # Sécurisé par Groupe / Permission, comme l'ancienne clôture via changer_statut
+        if not (request.user.has_perm('interventions.can_close_intervention') or request.user.is_superuser):
+            messages.error(request, "Action refusée : Vous devez faire partie du groupe autorisé pour clôturer.")
+            return redirect('liste_interventions')
+
+        pieces_utilisees = request.POST.get('pieces_utilisees') == 'oui'
+        compte_rendu = (request.POST.get('compte_rendu') or '').strip()
+
+        try:
+            with transaction.atomic():
+                if pieces_utilisees:
+                    for piece_id in request.POST.getlist('piece_id'):
+                        quantite = int(request.POST.get(f'quantite_{piece_id}') or 0)
+                        if quantite > 0:
+                            piece = get_object_or_404(PieceDetachee, id=piece_id)
+                            InterventionPiece.objects.create(
+                                intervention=intervention,
+                                piece=piece,
+                                quantite_utilisee=quantite,
+                            )
+
+                intervention.statut = 'resolu'
+                intervention.date_resolution = timezone.now()
+                intervention.compte_rendu = compte_rendu
+                intervention.save()
+        except ValueError as e:
+            # Levée par InterventionPiece.save() si le stock est insuffisant :
+            # la transaction est annulée, l'intervention reste "En cours".
+            messages.error(request, str(e))
+            return redirect('liste_interventions')
+
+        messages.success(request, f"L'intervention #{intervention.id} a été clôturée avec succès !")
+
     return redirect('liste_interventions')
 
 

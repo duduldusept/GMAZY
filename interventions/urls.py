@@ -5,6 +5,7 @@ urlpatterns = [
     path('', views.liste_interventions, name='liste_interventions'),  # Page d'accueil du site
     path('declarer-panne/', views.declarer_panne, name='declarer_panne'),
     path('interventions/<int:id_intervention>/statut/', views.changer_statut, name='changer_statut'),
+    path('interventions/<int:id_intervention>/resoudre/', views.resoudre_intervention, name='resoudre_intervention'),
     path('statistiques/', views.statistiques_machines, name='statistiques'),
 
     # Onglet Amélioration

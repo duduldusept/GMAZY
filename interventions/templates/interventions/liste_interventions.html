@@ -19,17 +19,101 @@
         <p class="text-sm font-medium text-gray-600 mb-4">📍 {{ intervention.machine.code_interne }} - {{ intervention.machine.nom }}</p>
         <p class="text-gray-700 text-sm mb-6">{{ intervention.description }}</p>
 
+        {% if intervention.statut == 'resolu' and intervention.compte_rendu %}
+        <div class="bg-gray-50 border border-gray-200 rounded-md p-3 mb-4">
+            <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Compte-rendu</p>
+            <p class="text-sm text-gray-700 whitespace-pre-line">{{ intervention.compte_rendu }}</p>
+        </div>
+        {% endif %}
+
         {% if intervention.statut != 'resolu' and 'changer_statut_intervention' in droits_utilisateur %}
-        <form method="POST" action="{% url 'changer_statut' intervention.id %}">
-            {% csrf_token %}
-            <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded text-sm transition">
-                {% if intervention.statut == 'a_faire' %}🔄 Prendre en charge{% else %}✅ Marquer comme Résolu{% endif %}
+            {% if intervention.statut == 'a_faire' %}
+            <form method="POST" action="{% url 'changer_statut' intervention.id %}">
+                {% csrf_token %}
+                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded text-sm transition">
+                    🔄 Prendre en charge
+                </button>
+            </form>
+            {% else %}
+            <button type="button" onclick="ouvrirModalResolution({{ intervention.id }})" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded text-sm transition">
+                ✅ Marquer comme Résolu
             </button>
-        </form>
+            {% endif %}
         {% endif %}
     </div>
     {% empty %}
     <p class="text-gray-500 col-span-3 text-center py-8">Aucune intervention en cours.</p>
     {% endfor %}
 </div>
+
+<div id="modal-resolution" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-lg shadow-xl p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">✅ Marquer comme résolu</h2>
+        <form method="POST" id="form-resolution" action="" class="space-y-4">
+            {% csrf_token %}
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Des pièces ont-elles été utilisées ?</label>
+                <div class="flex gap-6">
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="radio" name="pieces_utilisees" value="oui" onchange="toggleListePieces(true)">
+                        Oui
+                    </label>
+                    <label class="flex items-center gap-2 text-sm">
+                        <input type="radio" name="pieces_utilisees" value="non" onchange="toggleListePieces(false)" checked>
+                        Non
+                    </label>
+                </div>
+            </div>
+
+            <div id="bloc-pieces" class="hidden border border-gray-200 rounded-md p-3 max-h-56 overflow-y-auto space-y-2">
+                {% for piece in pieces_stock %}
+                <div class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="piece_id" value="{{ piece.id }}" onchange="toggleQuantite(this)">
+                    <span class="flex-1">{{ piece.nom }} <span class="text-gray-400">({{ piece.reference }})</span> — stock : {{ piece.quantite_stock }}</span>
+                    <input type="number" name="quantite_{{ piece.id }}" min="1" max="{{ piece.quantite_stock }}" value="1" disabled class="w-16 border border-gray-300 rounded px-1 py-0.5">
+                </div>
+                {% empty %}
+                <p class="text-sm text-gray-500">Aucune pièce en stock.</p>
+                {% endfor %}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Compte-rendu de l'intervention</label>
+                <textarea name="compte_rendu" rows="4" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" placeholder="Décris ce qui a été fait pour résoudre la panne..."></textarea>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button type="button" onclick="fermerModalResolution()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-md text-sm transition">Annuler</button>
+                <button type="submit" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-md text-sm transition">Valider</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const urlResolutionTemplate = "{% url 'resoudre_intervention' 0 %}";
+
+function ouvrirModalResolution(idIntervention) {
+    document.getElementById('form-resolution').action = urlResolutionTemplate.replace('0', idIntervention);
+    const modal = document.getElementById('modal-resolution');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function fermerModalResolution() {
+    const modal = document.getElementById('modal-resolution');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function toggleListePieces(afficher) {
+    document.getElementById('bloc-pieces').classList.toggle('hidden', !afficher);
+}
+
+function toggleQuantite(checkbox) {
+    const quantite = checkbox.closest('div').querySelector('input[type=number]');
+    quantite.disabled = !checkbox.checked;
+}
+</script>
 {% endblock %}
