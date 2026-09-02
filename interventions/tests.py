@@ -11,6 +11,46 @@ from .models import Intervention, InterventionPiece
 Utilisateur = get_user_model()
 
 
+class RegroupementListeInterventionsTests(TestCase):
+    """Vérifie que le tableau de bord regroupe automatiquement les cartes
+    par statut (à faire, puis en cours, puis résolu), plutôt que de les
+    mélanger par simple date de création."""
+
+    def setUp(self):
+        self.utilisateur = Utilisateur.objects.create_superuser(
+            username='admin_test2', email='admin2@test.local', password='motdepasse123',
+        )
+        self.client.force_login(self.utilisateur)
+        self.machine = Machine.objects.create(
+            nom="Presse 2", code_interne="P2", emplacement="Atelier",
+        )
+
+    def test_ordre_par_statut_puis_date(self):
+        # Créées volontairement dans le désordre pour vérifier que le tri
+        # ne dépend pas de l'ordre de création.
+        resolu = Intervention.objects.create(
+            titre="Résolu", machine=self.machine, statut='resolu',
+        )
+        a_faire_ancienne = Intervention.objects.create(
+            titre="A faire (ancienne)", machine=self.machine, statut='a_faire',
+        )
+        en_cours = Intervention.objects.create(
+            titre="En cours", machine=self.machine, statut='en_cours',
+        )
+        a_faire_recente = Intervention.objects.create(
+            titre="A faire (récente)", machine=self.machine, statut='a_faire',
+        )
+
+        reponse = self.client.get(reverse('liste_interventions'))
+        ordre_obtenu = [i.titre for i in reponse.context['interventions']]
+
+        # Groupe "à faire" (la plus récente d'abord) puis "en cours" puis "résolu"
+        self.assertEqual(
+            ordre_obtenu,
+            ["A faire (récente)", "A faire (ancienne)", "En cours", "Résolu"],
+        )
+
+
 class ResolutionInterventionTests(TestCase):
     """Vérifie le nouveau flux de résolution (fenêtre modale du tableau de
     bord) : compte-rendu, déduction du stock de pièces, et horodatage

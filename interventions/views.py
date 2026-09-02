@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.http import HttpResponseForbidden, JsonResponse
 from django.urls import reverse
 from django.db import transaction
+from django.db.models import Case, When, IntegerField
 from machines.models import Machine, Zone, PieceDetachee
 from .models import Intervention, DemandeAmelioration, InterventionPiece
 from utilisateurs.permissions import a_le_droit, necessite_droit
@@ -57,8 +58,16 @@ def declarer_panne(request):
 @login_required
 @necessite_droit('tableau_de_bord')
 def liste_interventions(request):
-    # On récupère toutes les pannes de la plus récente à la plus ancienne
-    interventions = Intervention.objects.all().order_by('-date_creation')
+    # On regroupe automatiquement les cartes par statut (à faire, puis en
+    # cours, puis résolu/clôturé), et on trie par date décroissante à
+    # l'intérieur de chaque groupe.
+    ordre_statut = Case(
+        When(statut='a_faire', then=0),
+        When(statut='en_cours', then=1),
+        When(statut='resolu', then=2),
+        output_field=IntegerField(),
+    )
+    interventions = Intervention.objects.all().order_by(ordre_statut, '-date_creation')
     # Pièces disponibles proposées dans la fenêtre de résolution (voir resoudre_intervention)
     pieces_stock = PieceDetachee.objects.all().order_by('nom')
     return render(request, 'interventions/liste_interventions.html', {

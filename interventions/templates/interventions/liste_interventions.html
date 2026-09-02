@@ -5,24 +5,24 @@
     <h1 class="text-3xl font-bold text-gray-800">🛠️ Liste des Interventions</h1>
 </header>
 
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
     {% for intervention in interventions %}
-    <div id="intervention-{{ intervention.id }}" class="bg-white rounded-lg shadow p-6 border-l-4 {% if intervention.statut == 'a_faire' %}border-red-500{% elif intervention.statut == 'en_cours' %}border-orange-500{% else %}border-green-500{% endif %} scroll-mt-8">
-        <div class="flex justify-between items-start mb-2">
-            <span class="text-xs font-semibold uppercase px-2 py-1 rounded {% if intervention.statut == 'a_faire' %}bg-red-100 text-red-800{% elif intervention.statut == 'en_cours' %}bg-orange-100 text-orange-800{% else %}bg-green-100 text-green-800{% endif %}">
+    <div id="intervention-{{ intervention.id }}" class="bg-white rounded-lg shadow p-4 border-l-4 {% if intervention.statut == 'a_faire' %}border-red-500{% elif intervention.statut == 'en_cours' %}border-orange-500{% else %}border-green-500{% endif %} scroll-mt-8">
+        <div class="flex justify-between items-start mb-1.5">
+            <span class="text-xs font-semibold uppercase px-1.5 py-0.5 rounded {% if intervention.statut == 'a_faire' %}bg-red-100 text-red-800{% elif intervention.statut == 'en_cours' %}bg-orange-100 text-orange-800{% else %}bg-green-100 text-green-800{% endif %}">
                 {{ intervention.get_statut_display }}
             </span>
             <span class="text-xs text-gray-500">#{{ intervention.id }}</span>
         </div>
 
-        <h3 class="text-xl font-bold text-gray-900 mb-1">{{ intervention.titre }}</h3>
-        <p class="text-sm font-medium text-gray-600 mb-4">📍 {{ intervention.machine.code_interne }} - {{ intervention.machine.nom }}</p>
-        <p class="text-gray-700 text-sm mb-6">{{ intervention.description }}</p>
+        <h3 class="text-base font-bold text-gray-900 mb-1">{{ intervention.titre }}</h3>
+        <p class="text-xs font-medium text-gray-600 mb-2">📍 {{ intervention.machine.code_interne }} - {{ intervention.machine.nom }}</p>
+        <p class="text-gray-700 text-sm mb-3">{{ intervention.description }}</p>
 
         {% if intervention.statut == 'resolu' and intervention.compte_rendu %}
-        <div class="bg-gray-50 border border-gray-200 rounded-md p-3 mb-4">
+        <div class="bg-gray-50 border border-gray-200 rounded-md p-2 mb-3">
             <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Compte-rendu</p>
-            <p class="text-sm text-gray-700 whitespace-pre-line">{{ intervention.compte_rendu }}</p>
+            <p class="text-xs text-gray-700 whitespace-pre-line">{{ intervention.compte_rendu }}</p>
         </div>
         {% endif %}
 
@@ -30,19 +30,19 @@
             {% if intervention.statut == 'a_faire' %}
             <form method="POST" action="{% url 'changer_statut' intervention.id %}">
                 {% csrf_token %}
-                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded text-sm transition">
+                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-1.5 px-3 rounded text-xs transition">
                     🔄 Prendre en charge
                 </button>
             </form>
             {% else %}
-            <button type="button" onclick="ouvrirModalResolution({{ intervention.id }})" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded text-sm transition">
+            <button type="button" onclick="ouvrirModalResolution({{ intervention.id }})" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-1.5 px-3 rounded text-xs transition">
                 ✅ Marquer comme Résolu
             </button>
             {% endif %}
         {% endif %}
     </div>
     {% empty %}
-    <p class="text-gray-500 col-span-3 text-center py-8">Aucune intervention en cours.</p>
+    <p class="text-gray-500 col-span-4 text-center py-8">Aucune intervention en cours.</p>
     {% endfor %}
 </div>
 

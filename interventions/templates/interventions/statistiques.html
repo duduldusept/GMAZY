@@ -58,13 +58,23 @@
 
     const ctx = document.getElementById('downtimeChart').getContext('2d');
 
+    // Convertit une durée décimale en heures (ex: 1.5) en texte "1h30"
+    // (ou "1h" si les minutes tombent juste), pour un affichage plus lisible
+    // que "1,5" sur l'axe et dans les info-bulles.
+    function formatHeuresMinutes(valeurDecimale) {
+        const totalMinutes = Math.round(valeurDecimale * 60);
+        const heures = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return minutes === 0 ? `${heures}h` : `${heures}h${String(minutes).padStart(2, '0')}`;
+    }
+
     new Chart(ctx, {
         type: 'bar', // Graphique en barres
         data: {
             labels: nomsMachines, // Noms des machines venant de Python (échappé via json_script)
             datasets: [
                 {
-                    label: "🔴 Machine arrêtée (h)",
+                    label: "🔴 Machine arrêtée",
                     data: tempsArret, // Heures d'arrêt venant de Python (échappé via json_script)
                     backgroundColor: 'rgba(239, 68, 68, 0.8)', // Rouge Tailwind (red-500)
                     borderColor: 'rgb(220, 38, 38)',
@@ -72,7 +82,7 @@
                     borderRadius: 6
                 },
                 {
-                    label: "🟠 Mode dégradé (h)",
+                    label: "🟠 Mode dégradé",
                     data: tempsDegrade, // Heures en mode dégradé venant de Python (échappé via json_script)
                     backgroundColor: 'rgba(253, 186, 116, 0.8)', // Orange clair Tailwind (orange-300)
                     borderColor: 'rgb(249, 115, 22)',
@@ -88,6 +98,11 @@
                 legend: {
                     display: true,
                     position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (contexte) => `${contexte.dataset.label} : ${formatHeuresMinutes(contexte.parsed.y)}`
+                    }
                 }
             },
             scales: {
@@ -95,7 +110,10 @@
                     beginAtZero: true,
                     title: {
                         display: true,
-                        text: 'Heures cumulées'
+                        text: 'Temps cumulé (h:min)'
+                    },
+                    ticks: {
+                        callback: (valeur) => formatHeuresMinutes(valeur)
                     }
                 }
             }
