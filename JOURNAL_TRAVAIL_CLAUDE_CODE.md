@@ -6,6 +6,40 @@ Ce fichier fait suite à `RESUME_POUR_CLAUDE_CODE_1.md` (contexte transmis depui
 
 ---
 
+## 2026-09-03 — Fenêtre de résolution, nature d'intervention, guides PowerPoint, audit de bugs (session interrompue, à reprendre demain)
+
+**Petites retouches** : ajout de la mention `©GMAZY` dans le badge de version (`v2.0 ©GMAZY`, taille ajustée à `text-[10px]` sur demande) dans `interventions/templates/interventions/base.html`.
+
+**Fenêtre de résolution d'intervention** (commit `9aa5eec`) : le bouton "Marquer comme Résolu" du tableau de bord ouvre désormais une modale plutôt que de clôturer directement — choix "pièces utilisées oui/non" (avec liste du stock + déduction automatique via `InterventionPiece`, qui gère déjà la validation), et champ compte-rendu. Nouvelle vue `resoudre_intervention` (`interventions/views.py`), `changer_statut` recentrée sur la seule transition à_faire→en_cours.
+
+**Tableau de bord** (commit `26f855f`) : cartes regroupées automatiquement par statut (à faire → en cours → résolu, tri en base via `Case/When`) plutôt que mélangées par date ; cartes réduites (padding/texte plus compacts, jusqu'à 4 colonnes). "Analyse des Temps d'Arrêt" affiche les durées en `1h30` plutôt qu'en décimal (`1,5`).
+
+**Demandes d'Amélioration + admin** (commit `3d6dec6`) : nouveau champ `DemandeAmelioration.date_cloture`, posé automatiquement quand la demande passe à un statut définitif (Acceptée/Refusée/Réalisée) et effacé si rouverte. Cartes du tableau de bord et de l'historique Amélioration affichent maintenant date/heure de la demande et de la clôture. Admin `InterventionAdmin` : 3 actions de liste ajoutées (*repasser_a_faire*, *repasser_en_cours*, *marquer_resolu*) pour changer le statut en masse, notamment rouvrir une intervention déjà clôturée sans passer par sa fiche détaillée.
+
+**Nature d'intervention** (commit `3e4bc3b`, corrigé en `33b260f`) : "Déclarer une panne" devient "Signalement de Panne ou d'une Intervention" avec une bascule Panne/Intervention ; en mode Intervention, menu déroulant Réglage/Nettoyage/Modification/Divers/Travaux Neuf (nouveau champ `Intervention.nature`, migration `0010_intervention_nature`). Nouveau camembert "Répartition par nature" sur la page Analyse (sur les interventions curatives uniquement) et filtre par nature sur Analyse des Temps d'Arrêt. **Bug trouvé et corrigé par `/code-review` sur ce commit** : les couleurs du camembert étaient assignées par position dans un tableau fixe alors que les données sont triées par nombre décroissant — corrigé en calculant les couleurs côté serveur, une par nature (`views.py::maintenance_analyse`).
+
+**Audit complet du projet** (commit `7873097`, via un agent Explore dédié + tests) — 6 bugs corrigés :
+1. `ajuster_stock` (Stock de Pièces) et `InterventionPiece.save()` faisaient un aller-retour Python (lecture puis +=/-= puis save()) au lieu d'une mise à jour atomique `F()` — deux ajustements/résolutions concurrents sur la même pièce pouvaient s'écraser ou faire passer le stock sous zéro. Corrigé avec des `UPDATE` conditionnés par `quantite_stock__gte`.
+2. Titres/noms/références/prestataires jamais tronqués à la longueur du champ avant enregistrement (7 formulaires) — invisible en local (SQLite ignore le dépassement de VARCHAR) mais plante en production avec une erreur 500 (Postgres/Railway le rejette). Troncature ajoutée côté vue + `maxlength` côté formulaire.
+3. `liste_interventions` (tableau de bord) faisait une requête par intervention pour sa machine (N+1) — ajout de `select_related('machine')`.
+4. `resoudre_intervention` écrasait le compte-rendu existant si l'intervention avait été rouverte puis re-résolue — désormais ajouté à la suite plutôt que remplacé.
+
+26 tests automatisés au total sur `interventions`/`machines` (0 avant cette session sur ces nouvelles fonctionnalités). `manage.py check`, `makemigrations --check --dry-run` et `manage.py test` systématiquement relancés après chaque lot de changements (aucune régression).
+
+**⚠️ Deux points de l'audit non corrigés — décision utilisateur nécessaire, pas juste du code** :
+- **Permissions Django séparées du système de rôles maison** : le bouton "Marquer comme Résolu" est gardé par la permission Django `can_close_intervention` (Groupes Django), totalement indépendante de la matrice `DroitRole`/`Fonctionnalite` gérée depuis "Gestion des droits". `backup_railway_avant_import.sql` (racine du dépôt, non commité) montre qu'en production le groupe `chef_equipe` n'a pas cette permission — des chefs d'équipe pourraient être bloqués pour clôturer une intervention même si leur rôle y donne accès dans "Gestion des droits". Se corrige côté admin Django (`/admin/`, assigner la permission au bon groupe), pas dans le code — **volontairement pas touché : concerne la configuration de production sur Railway**, que l'utilisateur a explicitement demandé de ne pas modifier.
+- **Cache de la matrice de droits en mémoire par processus** (`utilisateurs/permissions.py`, `CACHE_KEY_MATRICE`, `LocMemCache` par défaut) : si Railway tourne avec plusieurs workers Gunicorn, une modification de "Gestion des droits" ne se propage pas immédiatement aux autres workers (`timeout=None`). Corriger proprement nécessiterait un cache partagé (ex. Redis) — changement d'infra, pas fait sans confirmation.
+
+**Déploiement** : chaque commit de la session a été poussé sur `origin/main` (déclenche le redéploiement Railway). `D:\gmao\gmao_entreprise` est la clé USB elle-même (rien à copier séparément). `D:\gmao\gmao_entreprise_rdy` synchronisé après chaque lot de changements (code + migrations appliquées directement sur sa propre base pour préserver ses données, jamais en écrasant son `db.sqlite3`).
+
+**Guides PowerPoint** (hors dépôt Git, dans `D:\gmao\documentation\`) : `chef_equipe\GMAZY_Guide_Chef_Equipe.pptx` (9 slides, à partir des captures d'écran du dossier) et `Les Responsables\GMAZY_Guide_Responsable.pptx` (16 slides, régénéré une fois les captures complétées avec le compte Resp_Production — couvre Maintenance/Machine/Stock/Analyse/Bâtiment/Budget). Généré via `python-pptx` (installé dans l'environnement système, pas dans le `venv` du projet qui est cassé sur cette machine — voir remarque plus bas).
+
+**Remarque technique (venv cassé)** : `venv\Scripts\python.exe` de `gmao_entreprise` pointe vers un chemin d'un autre poste (`C:\Users\rolan\...\Python313`, `pyvenv.cfg`) et ne s'exécute plus sur cette machine. Contournement utilisé tout du long : `py` (Python Windows Store) + `$env:PYTHONPATH = "d:\gmao\gmao_entreprise\venv\Lib\site-packages"` pour réutiliser les paquets déjà installés dans le `venv` sans passer par son exécutable cassé. À signaler/réparer un jour (recréer le `venv` proprement avec `installer.bat`), sinon ce contournement sera nécessaire à chaque session shell.
+
+**Prochaine session** : reprendre ici. Rien de cassé, tout est commité/poussé/synchronisé à la fin de cette session. Points en attente : les deux problèmes de permissions/cache ci-dessus (à valider avec l'utilisateur), et éventuellement compléter le guide Responsable si d'autres captures d'écran sont ajoutées.
+
+---
+
 ## 2026-08-17 (suite 3) — Synchronisation gmao_entreprise → gmao_entreprise_rdy
 
 **Constat** : la revue de bugs `--fix` de la session précédente n'avait ciblé que `gmao_entreprise` (dépôt Git) ; les 3 correctifs (`demarrer_production.bat`, `requirements.txt`, `PENSE_BETE_DEPLOIEMENT.md`) et ce fichier journal n'avaient jamais été recopiés dans `gmao_entreprise_rdy`. Corrigé : les 4 fichiers copiés depuis `gmao_entreprise`. Un `diff -rq` complet (hors `venv/`, `.git/`, `db.sqlite3`, `__pycache__/`, `staticfiles/`, `.gitignore`, `.env`) confirme maintenant une **synchronisation parfaite** entre les deux copies.
