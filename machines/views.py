@@ -62,25 +62,38 @@ def ajuster_stock(request, id_piece):
         except (TypeError, ValueError):
             quantite = 0
 
+        # BUGFIX : les deux branches faisaient un aller-retour Python
+        # (lecture de piece.quantite_stock, puis +=/-= et .save()) au lieu
+        # d'une mise à jour atomique en base. Deux ajustements concurrents
+        # sur la même pièce pouvaient donc s'écraser l'un l'autre (dernier
+        # arrivé, dernier servi). On utilise désormais des mises à jour par
+        # F() comme partout ailleurs dans le projet (voir
+        # InterventionPiece.save() dans interventions/models.py), et pour
+        # "retirer" la condition quantite_stock__gte est vérifiée par la
+        # base elle-même dans la même requête, ce qui évite aussi de faire
+        # passer le stock sous zéro si deux retraits concurrents visent la
+        # dernière quantité disponible.
         if quantite <= 0:
             messages.error(request, "Merci d'indiquer une quantité valide (supérieure à 0).")
         elif action == 'ajouter':
-            piece.quantite_stock += quantite
-            piece.save()
+            PieceDetachee.objects.filter(pk=piece.pk).update(quantite_stock=F('quantite_stock') + quantite)
+            piece.refresh_from_db()
             messages.success(
                 request,
                 f"Stock de « {piece.nom} » : +{quantite} ({piece.quantite_stock} en stock)."
             )
         elif action == 'retirer':
-            if quantite > piece.quantite_stock:
+            lignes_modifiees = PieceDetachee.objects.filter(
+                pk=piece.pk, quantite_stock__gte=quantite
+            ).update(quantite_stock=F('quantite_stock') - quantite)
+            piece.refresh_from_db()
+            if lignes_modifiees == 0:
                 messages.error(
                     request,
                     f"Stock insuffisant pour « {piece.nom} » : {piece.quantite_stock} disponible(s), "
                     f"{quantite} demandé(s)."
                 )
             else:
-                piece.quantite_stock -= quantite
-                piece.save()
                 messages.success(
                     request,
                     f"Stock de « {piece.nom} » : -{quantite} ({piece.quantite_stock} en stock)."
@@ -101,8 +114,12 @@ def ajouter_piece(request):
     fait, mais on garde le même décorateur ici par cohérence et pour rester
     protégé même si l'accès à la page venait à être élargi plus tard."""
     if request.method == 'POST':
-        nom = (request.POST.get('nom') or '').strip()
-        reference = (request.POST.get('reference') or '').strip()
+        # BUGFIX : sans troncature, un nom/référence plus long que le
+        # max_length du modèle passait silencieusement en local (SQLite
+        # n'impose pas la limite VARCHAR) mais plantait en production
+        # (Postgres, sur Railway, la rejette avec une erreur 500).
+        nom = (request.POST.get('nom') or '').strip()[:150]  # PieceDetachee.nom max_length=150
+        reference = (request.POST.get('reference') or '').strip()[:100]  # PieceDetachee.reference max_length=100
         description = request.POST.get('description', '')
         machine_id = request.POST.get('machine_compatible')
 
@@ -263,7 +280,7 @@ def budget_section(request, code):
 
     if request.method == 'POST':
         machine_id = request.POST.get('machine')
-        titre = (request.POST.get('titre') or '').strip()
+        titre = (request.POST.get('titre') or '').strip()[:150]  # DepenseBudget.titre max_length=150
         description = request.POST.get('description', '')
         montant_brut = request.POST.get('montant', '')
         date_brute = request.POST.get('date_depense')
@@ -360,9 +377,9 @@ def ajouter_machine(request):
     """Ajoute une nouvelle machine au parc depuis l'onglet Machine (jusqu'ici
     possible uniquement depuis l'admin Django)."""
     if request.method == 'POST':
-        nom = (request.POST.get('nom') or '').strip()
-        code_interne = (request.POST.get('code_interne') or '').strip()
-        emplacement = (request.POST.get('emplacement') or '').strip()
+        nom = (request.POST.get('nom') or '').strip()[:100]  # Machine.nom max_length=100
+        code_interne = (request.POST.get('code_interne') or '').strip()[:50]  # Machine.code_interne max_length=50
+        emplacement = (request.POST.get('emplacement') or '').strip()[:100]  # Machine.emplacement max_length=100
         statut = request.POST.get('statut', 'fonctionne')
         zone_id = request.POST.get('zone')
 
@@ -428,7 +445,7 @@ def contrats(request):
     (maintenance, assurance, location...), avec ajout (document PDF/image
     optionnel) et suppression directement depuis la page."""
     if request.method == 'POST':
-        prestataire = (request.POST.get('prestataire') or '').strip()
+        prestataire = (request.POST.get('prestataire') or '').strip()[:150]  # Contrat.prestataire max_length=150
         type_contrat = request.POST.get('type_contrat', 'autre')
         if type_contrat not in dict(Contrat.TYPE_CHOICES):
             type_contrat = 'autre'

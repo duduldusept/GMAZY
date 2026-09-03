@@ -22,7 +22,11 @@ def declarer_panne(request):
     if request.method == 'POST':
         # On récupère les données du formulaire HTML
         machine_id = request.POST.get('machine')
-        titre = request.POST.get('titre')
+        # BUGFIX : sans troncature, un titre plus long que max_length=100
+        # passe silencieusement en local (SQLite n'impose pas la limite
+        # VARCHAR) mais plante en production (Postgres, sur Railway, la
+        # rejette avec une erreur 500).
+        titre = (request.POST.get('titre') or '')[:100]  # Intervention.titre max_length=100
         description = request.POST.get('description')
 
         # Menu déroulant "État de la machine" : seule la valeur 'arretee'
@@ -83,7 +87,7 @@ def liste_interventions(request):
         When(statut='resolu', then=2),
         output_field=IntegerField(),
     )
-    interventions = Intervention.objects.all().order_by(ordre_statut, '-date_creation')
+    interventions = Intervention.objects.select_related('machine').order_by(ordre_statut, '-date_creation')
     # Pièces disponibles proposées dans la fenêtre de résolution (voir resoudre_intervention)
     pieces_stock = PieceDetachee.objects.all().order_by('nom')
     return render(request, 'interventions/liste_interventions.html', {
@@ -147,9 +151,22 @@ def resoudre_intervention(request, id_intervention):
                                 quantite_utilisee=quantite,
                             )
 
+                # BUGFIX : si l'intervention avait déjà été résolue une
+                # première fois puis rouverte (voir les actions "Repasser
+                # en À faire / En cours" de l'admin), écraser
+                # compte_rendu effaçait silencieusement le compte-rendu de
+                # la première résolution. On l'ajoute désormais à la suite
+                # plutôt que de le remplacer.
+                if intervention.compte_rendu:
+                    intervention.compte_rendu = (
+                        f"{intervention.compte_rendu}\n\n"
+                        f"--- Ré-ouverte puis re-clôturée le {timezone.now():%d/%m/%Y %H:%M} ---\n"
+                        f"{compte_rendu}"
+                    )
+                else:
+                    intervention.compte_rendu = compte_rendu
                 intervention.statut = 'resolu'
                 intervention.date_resolution = timezone.now()
-                intervention.compte_rendu = compte_rendu
                 intervention.save()
         except ValueError as e:
             # Levée par InterventionPiece.save() si le stock est insuffisant :
@@ -261,7 +278,7 @@ def maintenance_preventive(request):
             return redirect('maintenance_preventive')
 
         machine_id = request.POST.get('machine')
-        titre = request.POST.get('titre')
+        titre = (request.POST.get('titre') or '')[:100]  # Intervention.titre max_length=100
         description = request.POST.get('description', '')
         date_prevue_brute = request.POST.get('date_prevue')
 
@@ -562,7 +579,7 @@ def amelioration(request):
     Bâtiment / Services Généraux (machine laissée vide), et historique de
     toutes les demandes déjà soumises."""
     if request.method == 'POST':
-        titre = (request.POST.get('titre') or '').strip()
+        titre = (request.POST.get('titre') or '').strip()[:150]  # DemandeAmelioration.titre max_length=150
         description = (request.POST.get('description') or '').strip()
         machine_id = request.POST.get('machine')
 

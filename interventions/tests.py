@@ -1,7 +1,9 @@
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -309,3 +311,124 @@ class ResolutionInterventionTests(TestCase):
         temps_arret = reponse.context['temps_arret']
         index_machine = noms.index(self.machine.nom)
         self.assertAlmostEqual(temps_arret[index_machine], 3.0, delta=0.05)
+
+
+class ReouvertureInterventionTests(TestCase):
+    """Vérifie que ré-ouvrir une intervention déjà résolue (actions de
+    l'admin repasser_a_faire/repasser_en_cours) puis la re-résoudre
+    n'efface pas le compte-rendu de la première résolution."""
+
+    def setUp(self):
+        self.utilisateur = Utilisateur.objects.create_superuser(
+            username='admin_reouverture', email='admin_reouverture@test.local', password='motdepasse123',
+        )
+        self.client.force_login(self.utilisateur)
+        self.machine = Machine.objects.create(nom="Presse 4", code_interne="P4", emplacement="Atelier")
+        self.intervention = Intervention.objects.create(
+            titre="Panne capteur", machine=self.machine, statut='en_cours', etat_machine='arretee',
+        )
+
+    def test_le_compte_rendu_precedent_est_conserve_apres_reouverture(self):
+        self.client.post(
+            reverse('resoudre_intervention', args=[self.intervention.id]),
+            {'pieces_utilisees': 'non', 'compte_rendu': "Premier passage : recalibrage du capteur."},
+        )
+        self.intervention.refresh_from_db()
+        self.assertIn("Premier passage", self.intervention.compte_rendu)
+
+        # Simule l'action admin "Repasser en « En cours de réparation »"
+        # (interventions/admin.py::repasser_en_cours), qui réinitialise
+        # statut et date_resolution sans toucher au compte_rendu.
+        Intervention.objects.filter(pk=self.intervention.pk).update(statut='en_cours', date_resolution=None)
+
+        self.client.post(
+            reverse('resoudre_intervention', args=[self.intervention.id]),
+            {'pieces_utilisees': 'non', 'compte_rendu': "Deuxième passage : le capteur était mal fixé."},
+        )
+        self.intervention.refresh_from_db()
+        self.assertIn("Premier passage", self.intervention.compte_rendu)
+        self.assertIn("Deuxième passage", self.intervention.compte_rendu)
+
+
+class RequetesListeInterventionsTests(TestCase):
+    """Vérifie que le tableau de bord ne fait pas une requête par
+    intervention pour récupérer sa machine (N+1) : le nombre de requêtes
+    doit rester constant, qu'il y ait 1 ou 10 interventions affichées."""
+
+    def setUp(self):
+        self.utilisateur = Utilisateur.objects.create_superuser(
+            username='admin_requetes', email='admin_requetes@test.local', password='motdepasse123',
+        )
+        self.client.force_login(self.utilisateur)
+
+    def _compter_requetes(self):
+        with CaptureQueriesContext(connection) as contexte:
+            self.client.get(reverse('liste_interventions'))
+        return len(contexte.captured_queries)
+
+    def test_le_nombre_de_requetes_ne_grandit_pas_avec_le_nombre_d_interventions(self):
+        machine = Machine.objects.create(nom="Machine 1", code_interne="MREQ1", emplacement="Atelier")
+        Intervention.objects.create(titre="Panne 1", machine=machine, statut='a_faire')
+        requetes_avec_1 = self._compter_requetes()
+
+        for i in range(2, 11):
+            machine = Machine.objects.create(nom=f"Machine {i}", code_interne=f"MREQ{i}", emplacement="Atelier")
+            Intervention.objects.create(titre=f"Panne {i}", machine=machine, statut='a_faire')
+        requetes_avec_10 = self._compter_requetes()
+
+        self.assertEqual(requetes_avec_1, requetes_avec_10)
+
+
+class TroncatureTitreTests(TestCase):
+    """Vérifie que le titre est tronqué à la longueur du modèle avant
+    l'enregistrement sur les formulaires "Signalement de Panne ou d'une
+    Intervention" et "Demande d'Amélioration" (voir TroncatureChampsTests
+    dans machines/tests.py pour le même correctif côté machines/pièces)."""
+
+    def setUp(self):
+        self.utilisateur = Utilisateur.objects.create_superuser(
+            username='admin_troncature2', email='admin_troncature2@test.local', password='motdepasse123',
+        )
+        self.client.force_login(self.utilisateur)
+        self.machine = Machine.objects.create(nom="Presse 5", code_interne="P5", emplacement="Atelier")
+
+    def test_titre_declaration_panne_trop_long_est_tronque(self):
+        self.client.post(reverse('declarer_panne'), {
+            'machine': self.machine.id, 'etat_machine': 'arretee', 'mode': 'panne',
+            'titre': "T" * 500, 'description': "Description",
+        })
+        intervention = Intervention.objects.latest('id')
+        self.assertEqual(len(intervention.titre), 100)
+
+    def test_titre_demande_amelioration_trop_long_est_tronque(self):
+        self.client.post(reverse('amelioration'), {
+            'titre': "T" * 500, 'description': "Description", 'machine': self.machine.id,
+        })
+        demande = DemandeAmelioration.objects.latest('id')
+        self.assertEqual(len(demande.titre), 150)
+
+
+class InterventionPieceStockLimiteTests(TestCase):
+    """Vérifie directement (sans passer par la vue) que
+    InterventionPiece.save() empêche le stock de passer sous zéro, y
+    compris à la limite exacte (voir le correctif TOCTOU dans
+    interventions/models.py)."""
+
+    def setUp(self):
+        self.machine = Machine.objects.create(nom="Presse 6", code_interne="P6", emplacement="Atelier")
+        self.piece = PieceDetachee.objects.create(nom="Joint", reference="JOINT-01", quantite_stock=3)
+        self.intervention = Intervention.objects.create(
+            titre="Fuite", machine=self.machine, statut='en_cours',
+        )
+
+    def test_utiliser_exactement_le_stock_disponible_fonctionne(self):
+        InterventionPiece.objects.create(intervention=self.intervention, piece=self.piece, quantite_utilisee=3)
+        self.piece.refresh_from_db()
+        self.assertEqual(self.piece.quantite_stock, 0)
+
+    def test_utiliser_un_de_plus_que_le_stock_leve_une_erreur_et_ne_change_rien(self):
+        with self.assertRaises(ValueError):
+            InterventionPiece.objects.create(intervention=self.intervention, piece=self.piece, quantite_utilisee=4)
+        self.piece.refresh_from_db()
+        self.assertEqual(self.piece.quantite_stock, 3)
+        self.assertFalse(InterventionPiece.objects.filter(intervention=self.intervention).exists())

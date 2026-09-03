@@ -203,13 +203,30 @@ class InterventionPiece(models.Model):
 
         if ancienne_piece_id == self.piece_id:
             delta = self.quantite_utilisee - ancienne_quantite
-            if delta > 0 and delta > self.piece.quantite_stock:
-                raise ValueError(
-                    f"Stock insuffisant pour « {self.piece.nom} » : "
-                    f"{self.piece.quantite_stock} disponible(s), "
-                    f"{delta} demandé(s) en plus."
-                )
-            if delta != 0:
+            if delta > 0:
+                # BUGFIX : la version précédente comparait `delta` à
+                # `self.piece.quantite_stock` lu en Python quelques
+                # instants plus tôt (TOCTOU), puis appliquait la
+                # décrémentation dans une requête séparée. Deux résolutions
+                # concurrentes consommant la même pièce pouvaient alors
+                # toutes les deux passer la vérification (chacune voyant le
+                # stock d'avant l'autre décrémentation) et faire passer le
+                # stock sous zéro. Le contrôle et la décrémentation sont
+                # désormais une seule requête UPDATE atomique conditionnée
+                # par quantite_stock__gte, garanti par la base elle-même.
+                lignes_modifiees = PieceDetachee.objects.filter(
+                    pk=self.piece_id, quantite_stock__gte=delta
+                ).update(quantite_stock=F('quantite_stock') - delta)
+                if lignes_modifiees == 0:
+                    stock_actuel = PieceDetachee.objects.filter(pk=self.piece_id).values_list(
+                        'quantite_stock', flat=True
+                    ).first()
+                    raise ValueError(
+                        f"Stock insuffisant pour « {self.piece.nom} » : "
+                        f"{stock_actuel} disponible(s), "
+                        f"{delta} demandé(s) en plus."
+                    )
+            elif delta < 0:
                 PieceDetachee.objects.filter(pk=self.piece_id).update(
                     quantite_stock=F('quantite_stock') - delta
                 )
@@ -219,15 +236,19 @@ class InterventionPiece(models.Model):
                 PieceDetachee.objects.filter(pk=ancienne_piece_id).update(
                     quantite_stock=F('quantite_stock') + ancienne_quantite
                 )
-            if self.quantite_utilisee > self.piece.quantite_stock:
+            # Même correctif TOCTOU que ci-dessus pour la nouvelle pièce.
+            lignes_modifiees = PieceDetachee.objects.filter(
+                pk=self.piece_id, quantite_stock__gte=self.quantite_utilisee
+            ).update(quantite_stock=F('quantite_stock') - self.quantite_utilisee)
+            if lignes_modifiees == 0:
+                stock_actuel = PieceDetachee.objects.filter(pk=self.piece_id).values_list(
+                    'quantite_stock', flat=True
+                ).first()
                 raise ValueError(
                     f"Stock insuffisant pour « {self.piece.nom} » : "
-                    f"{self.piece.quantite_stock} disponible(s), "
+                    f"{stock_actuel} disponible(s), "
                     f"{self.quantite_utilisee} demandé(s)."
                 )
-            PieceDetachee.objects.filter(pk=self.piece_id).update(
-                quantite_stock=F('quantite_stock') - self.quantite_utilisee
-            )
 
         super().save(*args, **kwargs)
 
