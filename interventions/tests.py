@@ -11,6 +11,101 @@ from .models import Intervention, InterventionPiece, DemandeAmelioration
 Utilisateur = get_user_model()
 
 
+class NatureInterventionTests(TestCase):
+    """Vérifie la bascule Panne / Intervention du formulaire "Signalement de
+    Panne ou d'une Intervention" (champ `nature`), et son exploitation dans
+    Analyse (répartition par nature) et Analyse des Temps d'Arrêt (filtre)."""
+
+    def setUp(self):
+        self.utilisateur = Utilisateur.objects.create_superuser(
+            username='admin_test4', email='admin4@test.local', password='motdepasse123',
+        )
+        self.client.force_login(self.utilisateur)
+        self.machine = Machine.objects.create(
+            nom="Presse 3", code_interne="P3", emplacement="Atelier",
+        )
+
+    def _declarer(self, **extra):
+        donnees = {
+            'machine': self.machine.id,
+            'etat_machine': 'arretee',
+            'titre': "Test",
+            'description': "Test",
+            'mode': 'panne',
+        }
+        donnees.update(extra)
+        return self.client.post(reverse('declarer_panne'), donnees)
+
+    def test_mode_panne_par_defaut(self):
+        self._declarer()
+        intervention = Intervention.objects.latest('id')
+        self.assertEqual(intervention.nature, 'panne')
+
+    def test_mode_intervention_utilise_la_nature_choisie(self):
+        self._declarer(mode='intervention', nature='nettoyage')
+        intervention = Intervention.objects.latest('id')
+        self.assertEqual(intervention.nature, 'nettoyage')
+
+    def test_mode_intervention_sans_nature_valide_retombe_sur_divers(self):
+        self._declarer(mode='intervention', nature='')
+        intervention = Intervention.objects.latest('id')
+        self.assertEqual(intervention.nature, 'divers')
+
+    def test_filtre_nature_sur_analyse_temps_arret(self):
+        Intervention.objects.create(
+            titre="Panne", machine=self.machine, statut='resolu',
+            etat_machine='arretee', nature='panne',
+            date_creation=timezone.now(), date_resolution=timezone.now() + timedelta(hours=2),
+        )
+        Intervention.objects.create(
+            titre="Nettoyage", machine=self.machine, statut='resolu',
+            etat_machine='arretee', nature='nettoyage',
+            date_creation=timezone.now(), date_resolution=timezone.now() + timedelta(hours=1),
+        )
+
+        reponse = self.client.get(reverse('statistiques') + '?periode=mois&nature=nettoyage')
+        index_machine = reponse.context['noms_machines'].index(self.machine.nom)
+        self.assertAlmostEqual(reponse.context['temps_arret'][index_machine], 1.0, delta=0.05)
+
+    def test_repartition_par_nature_sur_page_analyse(self):
+        Intervention.objects.create(
+            titre="Panne 1", machine=self.machine, type_intervention='correctif', nature='panne',
+        )
+        Intervention.objects.create(
+            titre="Panne 2", machine=self.machine, type_intervention='correctif', nature='panne',
+        )
+        Intervention.objects.create(
+            titre="Réglage 1", machine=self.machine, type_intervention='correctif', nature='reglage',
+        )
+        # Une intervention préventive ne doit pas polluer cette répartition
+        # (elle reste à sa nature par défaut 'panne', non pertinente ici).
+        Intervention.objects.create(
+            titre="Entretien programmé", machine=self.machine, type_intervention='preventif',
+        )
+
+        reponse = self.client.get(reverse('maintenance_analyse'))
+        repartition = dict(zip(reponse.context['labels_nature'], reponse.context['donnees_nature']))
+        self.assertEqual(repartition.get('Panne'), 2)
+        self.assertEqual(repartition.get('Réglage'), 1)
+        self.assertEqual(sum(reponse.context['donnees_nature']), 3)
+
+
+class RenduPagesModifieesTests(TestCase):
+    """Vérification basique (statut 200, pas d'erreur de template) des pages
+    dont le HTML a été modifié dans cette série de changements."""
+
+    def setUp(self):
+        self.utilisateur = Utilisateur.objects.create_superuser(
+            username='admin_test5', email='admin5@test.local', password='motdepasse123',
+        )
+        self.client.force_login(self.utilisateur)
+
+    def test_pages_se_chargent_sans_erreur(self):
+        for nom_url in ['declarer_panne', 'statistiques', 'maintenance_analyse', 'amelioration', 'liste_interventions', 'maintenance_curative']:
+            reponse = self.client.get(reverse(nom_url))
+            self.assertEqual(reponse.status_code, 200, f"{nom_url} a renvoyé {reponse.status_code}")
+
+
 class ClotureDemandeAmeliorationTests(TestCase):
     """Vérifie que la date de clôture d'une Demande d'Amélioration est posée
     quand elle atteint un statut définitif, et effacée si elle est rouverte."""

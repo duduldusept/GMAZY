@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.http import HttpResponseForbidden, JsonResponse
 from django.urls import reverse
 from django.db import transaction
-from django.db.models import Case, When, IntegerField
+from django.db.models import Case, When, IntegerField, Count
 from machines.models import Machine, Zone, PieceDetachee
 from .models import Intervention, DemandeAmelioration, InterventionPiece
 from utilisateurs.permissions import a_le_droit, necessite_droit
@@ -33,6 +33,18 @@ def declarer_panne(request):
         if etat_machine not in dict(Intervention.ETAT_MACHINE_CHOICES):
             etat_machine = 'arretee'
 
+        # Bascule "Panne" / "Intervention" en haut du formulaire : en mode
+        # Intervention, la nature vient du menu déroulant (Réglage,
+        # Nettoyage, Modification, Divers, Travaux Neuf) ; en mode Panne
+        # (par défaut), la nature reste 'panne'.
+        mode = request.POST.get('mode', 'panne')
+        if mode == 'intervention':
+            nature = request.POST.get('nature', '')
+            if nature not in dict(Intervention.NATURE_CHOICES) or nature == 'panne':
+                nature = 'divers'
+        else:
+            nature = 'panne'
+
         # BUGFIX : get_object_or_404 évite une erreur 500 si l'ID de
         # machine envoyé par le formulaire est invalide ou manquant.
         machine_concerne = get_object_or_404(Machine, id=machine_id)
@@ -45,9 +57,13 @@ def declarer_panne(request):
             type_intervention='correctif',
             statut='a_faire',
             etat_machine=etat_machine,
+            nature=nature,
         )
 
-        messages.success(request, "La panne a bien été signalée à l'équipe de maintenance.")
+        if mode == 'intervention':
+            messages.success(request, "L'intervention a bien été signalée à l'équipe de maintenance.")
+        else:
+            messages.success(request, "La panne a bien été signalée à l'équipe de maintenance.")
         return redirect('liste_interventions')
 
     # Si c'est une requête simple (GET), on affiche juste la page avec la liste des machines
@@ -152,6 +168,12 @@ def statistiques_machines(request):
     # 1. Récupérer le filtre temporel choisi par l'utilisateur (par défaut: mois)
     periode = request.GET.get('periode', 'mois')
 
+    # Filtre optionnel par nature d'intervention (Panne, Réglage, Nettoyage,
+    # Modification, Divers, Travaux Neuf) : vide = toutes natures confondues.
+    nature = request.GET.get('nature', '')
+    if nature not in dict(Intervention.NATURE_CHOICES):
+        nature = ''
+
     machines = Machine.objects.all()
     noms_machines = []
     temps_arret = []
@@ -182,6 +204,9 @@ def statistiques_machines(request):
         # ici (ni 'arretee' ni 'degradee').
         interventions = Intervention.objects.filter(machine=machine)
 
+        if nature:
+            interventions = interventions.filter(nature=nature)
+
         if periode == 'jour':
             interventions = interventions.filter(date_creation__date=maintenant.date())
         elif periode == 'mois':
@@ -208,7 +233,9 @@ def statistiques_machines(request):
         'noms_machines': noms_machines,
         'temps_arret': temps_arret,
         'temps_degrade': temps_degrade,
-        'periode_actuelle': periode
+        'periode_actuelle': periode,
+        'nature_choices': Intervention.NATURE_CHOICES,
+        'nature_selectionnee': nature,
     }
     return render(request, 'interventions/statistiques.html', context)
 
@@ -384,12 +411,29 @@ def maintenance_analyse(request):
         pct_preventif = 0
         pct_correctif = 0
 
+    # Répartition par nature d'intervention (Panne, Réglage, Nettoyage,
+    # Modification, Divers, Travaux Neuf), calculée sur les interventions
+    # curatives : c'est le seul flux de création (le formulaire "Signalement
+    # de Panne ou d'une Intervention") où ce champ est renseigné par
+    # l'utilisateur plutôt que laissé à sa valeur par défaut 'panne'.
+    libelles_nature = dict(Intervention.NATURE_CHOICES)
+    repartition_nature = (
+        Intervention.objects.filter(type_intervention='correctif')
+        .values('nature')
+        .annotate(total=Count('id'))
+        .order_by('-total')
+    )
+    labels_nature = [libelles_nature.get(r['nature'], r['nature']) for r in repartition_nature]
+    donnees_nature = [r['total'] for r in repartition_nature]
+
     context = {
         'total': total,
         'nb_preventif': nb_preventif,
         'nb_correctif': nb_correctif,
         'pct_preventif': pct_preventif,
         'pct_correctif': pct_correctif,
+        'labels_nature': labels_nature,
+        'donnees_nature': donnees_nature,
     }
     return render(request, 'interventions/maintenance_analyse.html', context)
 

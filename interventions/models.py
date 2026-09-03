@@ -18,6 +18,20 @@ class Intervention(models.Model):
         ('preventif', 'Préventif (Entretien)'),
     ]
 
+    # Nature précise de l'intervention, choisie sur le formulaire "Signalement
+    # de Panne ou d'une Intervention" : 'panne' quand la bascule est restée
+    # sur "Panne", ou une des 5 valeurs du menu déroulant quand la bascule
+    # est sur "Intervention". Sert à ventiler les interventions curatives par
+    # type d'opération (voir Analyse et Analyse des Temps d'Arrêt).
+    NATURE_CHOICES = [
+        ('panne', 'Panne'),
+        ('reglage', 'Réglage'),
+        ('nettoyage', 'Nettoyage'),
+        ('modification', 'Modification'),
+        ('divers', 'Divers'),
+        ('travaux_neuf', 'Travaux Neuf'),
+    ]
+
     # Choix affiché en menu déroulant sur le formulaire "Déclarer une panne".
     # Seul l'état 'arretee' est comptabilisé dans le temps d'arrêt de la page
     # Analyse des Temps d'Arrêt (voir statistiques_machines dans views.py) :
@@ -42,6 +56,12 @@ class Intervention(models.Model):
         verbose_name="État de la machine",
     )
     statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='a_faire')
+    nature = models.CharField(
+        max_length=20,
+        choices=NATURE_CHOICES,
+        default='panne',
+        verbose_name="Nature de l'intervention",
+    )
 
     machine = models.ForeignKey(Machine, on_delete=models.CASCADE, related_name='interventions', verbose_name="Machine")
     technicien = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Technicien en charge")

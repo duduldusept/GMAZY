@@ -53,39 +53,39 @@
     </form>
 
     <div class="bg-white rounded-xl shadow border overflow-x-auto">
-        <table class="min-w-full text-sm">
+        <table class="w-full text-sm table-fixed">
             <thead>
                 <tr class="bg-slate-50 border-b text-left text-xs uppercase text-gray-500">
-                    <th class="px-4 py-3">Date</th>
-                    <th class="px-4 py-3">Type</th>
-                    <th class="px-4 py-3">Statut</th>
-                    <th class="px-4 py-3">Machine</th>
-                    <th class="px-4 py-3">Zone</th>
+                    <th class="px-4 py-3 w-28">Date</th>
+                    <th class="px-4 py-3 w-28">Type</th>
+                    <th class="px-4 py-3 w-32">Statut</th>
+                    <th class="px-4 py-3 w-44">Machine</th>
+                    <th class="px-4 py-3 w-20">Zone</th>
                     <th class="px-4 py-3">Détails</th>
                 </tr>
             </thead>
             <tbody class="divide-y">
                 {% for intervention in interventions %}
-                <tr>
-                    <td class="px-4 py-3 whitespace-nowrap text-gray-500">
+                <tr class="align-top">
+                    <td class="px-4 py-3 text-gray-500">
                         {{ intervention.date_creation|date:"d/m/Y H:i" }}
                         {% if intervention.date_resolution %}
                         <div class="text-xs text-gray-400">Résolu le {{ intervention.date_resolution|date:"d/m/Y H:i" }}</div>
                         {% endif %}
                     </td>
-                    <td class="px-4 py-3 whitespace-nowrap">
+                    <td class="px-4 py-3">
                         <span class="text-xs font-semibold uppercase px-2 py-1 rounded {% if intervention.type_intervention == 'preventif' %}bg-emerald-100 text-emerald-800{% else %}bg-slate-200 text-slate-800{% endif %}">
                             {{ intervention.get_type_intervention_display }}
                         </span>
                     </td>
-                    <td class="px-4 py-3 whitespace-nowrap">
+                    <td class="px-4 py-3">
                         <span class="text-xs font-semibold uppercase px-2 py-1 rounded {% if intervention.statut == 'a_faire' %}bg-red-100 text-red-800{% elif intervention.statut == 'en_cours' %}bg-orange-100 text-orange-800{% else %}bg-green-100 text-green-800{% endif %}">
                             {{ intervention.get_statut_display }}
                         </span>
                     </td>
-                    <td class="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{{ intervention.machine.code_interne }} - {{ intervention.machine.nom }}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-gray-500">{{ intervention.machine.zone.nom|default:"—" }}</td>
-                    <td class="px-4 py-3">
+                    <td class="px-4 py-3 font-medium text-gray-900 break-words">{{ intervention.machine.code_interne }} - {{ intervention.machine.nom }}</td>
+                    <td class="px-4 py-3 text-gray-500 break-words">{{ intervention.machine.zone.nom|default:"—" }}</td>
+                    <td class="px-4 py-3 break-words">
                         <p class="font-medium text-gray-900">{{ intervention.titre }}</p>
                         <p class="text-gray-500">{{ intervention.description }}</p>
                         {% if intervention.compte_rendu %}

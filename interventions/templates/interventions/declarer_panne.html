@@ -3,12 +3,26 @@
 {% block content %}
 <div class="max-w-xl mx-auto bg-white p-8 rounded-lg shadow">
     <h1 class="text-2xl font-bold text-red-600 mb-2 flex items-center gap-2">
-        ⚠️ Signalement de Panne
+        ⚠️ Signalement de Panne ou d'une Intervention
     </h1>
     <p class="text-gray-600 mb-6 text-sm">Remplissez ce formulaire pour alerter l'équipe de maintenance.</p>
 
-    <form method="POST" class="space-y-4">
+    <form method="POST" class="space-y-4" id="form-declaration">
         {% csrf_token %}
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Type de demande *</label>
+            <div class="flex rounded-md overflow-hidden border border-gray-300 text-sm font-semibold">
+                <label class="flex-1 text-center py-2 cursor-pointer bg-red-600 text-white" id="onglet-panne">
+                    <input type="radio" name="mode" value="panne" checked onchange="basculerMode('panne')" class="hidden">
+                    ⚠️ Panne
+                </label>
+                <label class="flex-1 text-center py-2 cursor-pointer bg-gray-100 text-gray-700" id="onglet-intervention">
+                    <input type="radio" name="mode" value="intervention" onchange="basculerMode('intervention')" class="hidden">
+                    🛠️ Intervention
+                </label>
+            </div>
+        </div>
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Machine concernée *</label>
@@ -17,6 +31,17 @@
                 {% for machine in machines %}
                     <option value="{{ machine.id }}">{{ machine.code_interne }} - {{ machine.nom }} ({{ machine.emplacement }})</option>
                 {% endfor %}
+            </select>
+        </div>
+
+        <div id="bloc-nature" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nature de l'intervention *</label>
+            <select name="nature" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
+                <option value="reglage">🔧 Réglage</option>
+                <option value="nettoyage">🧹 Nettoyage</option>
+                <option value="modification">🛠️ Modification</option>
+                <option value="divers">📦 Divers</option>
+                <option value="travaux_neuf">🏗️ Travaux Neuf</option>
             </select>
         </div>
 
@@ -30,13 +55,13 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Problème constaté (Résumé) *</label>
-            <input type="text" name="titre" required placeholder="Ex: Surchauffe moteur" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
+            <label class="block text-sm font-medium text-gray-700 mb-1" id="label-titre">Problème constaté (Résumé) *</label>
+            <input type="text" name="titre" required id="input-titre" placeholder="Ex: Surchauffe moteur" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none">
         </div>
 
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Description détaillée</label>
-            <textarea name="description" rows="4" placeholder="Détails de la panne..." class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none"></textarea>
+            <textarea name="description" rows="4" id="input-description" placeholder="Détails de la panne..." class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:outline-none"></textarea>
         </div>
 
         <!-- BUGFIX : la case "machine arrêtée" a été retirée car le champ
@@ -46,9 +71,38 @@
              l'ajouter à nouveau au modèle + une migration + la lecture dans
              la vue. -->
 
-        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition">
+        <button type="submit" id="bouton-envoyer" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition">
             Envoyer la demande d'intervention
         </button>
     </form>
 </div>
+
+<script>
+function basculerMode(mode) {
+    const ongletPanne = document.getElementById('onglet-panne');
+    const ongletIntervention = document.getElementById('onglet-intervention');
+    const blocNature = document.getElementById('bloc-nature');
+    const labelTitre = document.getElementById('label-titre');
+    const inputTitre = document.getElementById('input-titre');
+    const inputDescription = document.getElementById('input-description');
+
+    const estIntervention = mode === 'intervention';
+
+    ongletPanne.classList.toggle('bg-red-600', !estIntervention);
+    ongletPanne.classList.toggle('text-white', !estIntervention);
+    ongletPanne.classList.toggle('bg-gray-100', estIntervention);
+    ongletPanne.classList.toggle('text-gray-700', estIntervention);
+
+    ongletIntervention.classList.toggle('bg-slate-900', estIntervention);
+    ongletIntervention.classList.toggle('text-white', estIntervention);
+    ongletIntervention.classList.toggle('bg-gray-100', !estIntervention);
+    ongletIntervention.classList.toggle('text-gray-700', !estIntervention);
+
+    blocNature.classList.toggle('hidden', !estIntervention);
+
+    labelTitre.textContent = estIntervention ? "Résumé de l'intervention *" : 'Problème constaté (Résumé) *';
+    inputTitre.placeholder = estIntervention ? 'Ex: Réglage de la tension du convoyeur' : 'Ex: Surchauffe moteur';
+    inputDescription.placeholder = estIntervention ? "Détails de l'intervention..." : 'Détails de la panne...';
+}
+</script>
 {% endblock %}

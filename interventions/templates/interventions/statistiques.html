@@ -10,16 +10,24 @@
             <p class="text-sm text-gray-500 mt-1">Cumul des heures d'arrêt et de fonctionnement en mode dégradé par équipement</p>
         </div>
         
-        <div class="inline-flex rounded-md shadow-sm">
-            <a href="?periode=jour" class="px-4 py-2 text-sm font-medium border rounded-l-lg {% if periode_actuelle == 'jour' %}bg-slate-900 text-white{% else %}bg-white text-gray-700 hover:bg-gray-50{% endif %}">
-                Jour
-            </a>
-            <a href="?periode=mois" class="px-4 py-2 text-sm font-medium border-t border-b {% if periode_actuelle == 'mois' %}bg-slate-900 text-white{% else %}bg-white text-gray-700 hover:bg-gray-50{% endif %}">
-                Mois
-            </a>
-            <a href="?periode=annee" class="px-4 py-2 text-sm font-medium border rounded-r-lg {% if periode_actuelle == 'annee' %}bg-slate-900 text-white{% else %}bg-white text-gray-700 hover:bg-gray-50{% endif %}">
-                Année
-            </a>
+        <div class="flex items-center gap-3">
+            <div class="inline-flex rounded-md shadow-sm">
+                <a href="?periode=jour{% if nature_selectionnee %}&nature={{ nature_selectionnee }}{% endif %}" class="px-4 py-2 text-sm font-medium border rounded-l-lg {% if periode_actuelle == 'jour' %}bg-slate-900 text-white{% else %}bg-white text-gray-700 hover:bg-gray-50{% endif %}">
+                    Jour
+                </a>
+                <a href="?periode=mois{% if nature_selectionnee %}&nature={{ nature_selectionnee }}{% endif %}" class="px-4 py-2 text-sm font-medium border-t border-b {% if periode_actuelle == 'mois' %}bg-slate-900 text-white{% else %}bg-white text-gray-700 hover:bg-gray-50{% endif %}">
+                    Mois
+                </a>
+                <a href="?periode=annee{% if nature_selectionnee %}&nature={{ nature_selectionnee }}{% endif %}" class="px-4 py-2 text-sm font-medium border rounded-r-lg {% if periode_actuelle == 'annee' %}bg-slate-900 text-white{% else %}bg-white text-gray-700 hover:bg-gray-50{% endif %}">
+                    Année
+                </a>
+            </div>
+            <select onchange="window.location.href='?periode={{ periode_actuelle }}&nature=' + this.value" class="px-3 py-2 text-sm border border-gray-300 rounded-md">
+                <option value="" {% if not nature_selectionnee %}selected{% endif %}>Toutes les opérations</option>
+                {% for valeur, libelle in nature_choices %}
+                <option value="{{ valeur }}" {% if valeur == nature_selectionnee %}selected{% endif %}>{{ libelle }}</option>
+                {% endfor %}
+            </select>
         </div>
     </header>
 
