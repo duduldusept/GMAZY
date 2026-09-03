@@ -137,6 +137,10 @@ class DemandeAmelioration(models.Model):
     )
     statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='nouvelle')
     date_creation = models.DateTimeField(default=timezone.now, verbose_name="Date de la demande")
+    date_cloture = models.DateTimeField(
+        blank=True, null=True, verbose_name="Date de clôture",
+        help_text="Renseignée automatiquement quand la demande passe à Acceptée, Refusée ou Réalisée.",
+    )
 
     class Meta:
         verbose_name = "Demande d'amélioration"

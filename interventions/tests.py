@@ -6,9 +6,45 @@ from django.urls import reverse
 from django.utils import timezone
 
 from machines.models import Machine, PieceDetachee
-from .models import Intervention, InterventionPiece
+from .models import Intervention, InterventionPiece, DemandeAmelioration
 
 Utilisateur = get_user_model()
+
+
+class ClotureDemandeAmeliorationTests(TestCase):
+    """Vérifie que la date de clôture d'une Demande d'Amélioration est posée
+    quand elle atteint un statut définitif, et effacée si elle est rouverte."""
+
+    def setUp(self):
+        self.utilisateur = Utilisateur.objects.create_superuser(
+            username='admin_test3', email='admin3@test.local', password='motdepasse123',
+        )
+        self.client.force_login(self.utilisateur)
+        self.demande = DemandeAmelioration.objects.create(
+            titre="Ajouter un éclairage", description="Zone trop sombre", statut='nouvelle',
+        )
+
+    def test_cloture_posee_sur_statut_final(self):
+        self.client.post(
+            reverse('changer_statut_amelioration', args=[self.demande.id]),
+            {'statut': 'acceptee'},
+        )
+        self.demande.refresh_from_db()
+        self.assertEqual(self.demande.statut, 'acceptee')
+        self.assertIsNotNone(self.demande.date_cloture)
+
+    def test_reouverture_efface_la_cloture(self):
+        self.demande.statut = 'acceptee'
+        self.demande.date_cloture = timezone.now()
+        self.demande.save()
+
+        self.client.post(
+            reverse('changer_statut_amelioration', args=[self.demande.id]),
+            {'statut': 'en_etude'},
+        )
+        self.demande.refresh_from_db()
+        self.assertEqual(self.demande.statut, 'en_etude')
+        self.assertIsNone(self.demande.date_cloture)
 
 
 class RegroupementListeInterventionsTests(TestCase):

@@ -548,6 +548,12 @@ def changer_statut_amelioration(request, id_demande):
 
         if nouveau_statut in dict(DemandeAmelioration.STATUT_CHOICES):
             demande.statut = nouveau_statut
+            # Horodatage de clôture : posé quand la demande arrive à un statut
+            # définitif, effacé si elle est rouverte (retour à Nouvelle / En étude).
+            if nouveau_statut in ('acceptee', 'refusee', 'realisee'):
+                demande.date_cloture = timezone.now()
+            else:
+                demande.date_cloture = None
             demande.save()
             messages.success(request, f"Statut de la demande « {demande.titre} » mis à jour.")
         else:

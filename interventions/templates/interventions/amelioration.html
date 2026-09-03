@@ -51,7 +51,10 @@
                     {% else %}bg-green-100 text-green-800{% endif %}">
                     {{ demande.get_statut_display }}
                 </span>
-                <span class="text-xs text-gray-400">{{ demande.date_creation|date:"d/m/Y H:i" }}</span>
+                <span class="text-xs text-gray-400 text-right">
+                    📅 Demandée le {{ demande.date_creation|date:"d/m/Y H:i" }}
+                    {% if demande.date_cloture %}<br>✅ Clôturée le {{ demande.date_cloture|date:"d/m/Y H:i" }}{% endif %}
+                </span>
             </div>
             <h3 class="text-lg font-bold text-gray-900 mb-1">{{ demande.titre }}</h3>
             <p class="text-sm font-medium text-gray-600 mb-2">

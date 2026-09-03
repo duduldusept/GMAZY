@@ -16,7 +16,11 @@
         </div>
 
         <h3 class="text-base font-bold text-gray-900 mb-1">{{ intervention.titre }}</h3>
-        <p class="text-xs font-medium text-gray-600 mb-2">📍 {{ intervention.machine.code_interne }} - {{ intervention.machine.nom }}</p>
+        <p class="text-xs font-medium text-gray-600 mb-1">📍 {{ intervention.machine.code_interne }} - {{ intervention.machine.nom }}</p>
+        <p class="text-xs text-gray-400 mb-2">
+            📅 Demandée le {{ intervention.date_creation|date:"d/m/Y H:i" }}
+            {% if intervention.date_resolution %} · ✅ Clôturée le {{ intervention.date_resolution|date:"d/m/Y H:i" }}{% endif %}
+        </p>
         <p class="text-gray-700 text-sm mb-3">{{ intervention.description }}</p>
 
         {% if intervention.statut == 'resolu' and intervention.compte_rendu %}
