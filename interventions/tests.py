@@ -89,6 +89,27 @@ class NatureInterventionTests(TestCase):
         self.assertEqual(repartition.get('Réglage'), 1)
         self.assertEqual(sum(reponse.context['donnees_nature']), 3)
 
+    def test_couleurs_du_camembert_restent_alignees_meme_quand_le_tri_change(self):
+        # "Réglage" est ici la nature la plus fréquente : elle passe donc en
+        # tête du tri par nombre décroissant, devant "Panne". La couleur de
+        # chaque nature doit rester la sienne, pas celle de sa position.
+        for _ in range(3):
+            Intervention.objects.create(
+                titre="Réglage", machine=self.machine, type_intervention='correctif', nature='reglage',
+            )
+        Intervention.objects.create(
+            titre="Panne", machine=self.machine, type_intervention='correctif', nature='panne',
+        )
+
+        reponse = self.client.get(reverse('maintenance_analyse'))
+        labels = reponse.context['labels_nature']
+        couleurs = reponse.context['couleurs_nature']
+        couleurs_par_label = dict(zip(labels, couleurs))
+
+        self.assertEqual(labels[0], 'Réglage')  # confirme que le tri place bien Réglage en tête
+        self.assertEqual(couleurs_par_label['Réglage'], 'rgba(59, 130, 246, 0.85)')
+        self.assertEqual(couleurs_par_label['Panne'], 'rgba(239, 68, 68, 0.85)')
+
 
 class RenduPagesModifieesTests(TestCase):
     """Vérification basique (statut 200, pas d'erreur de template) des pages

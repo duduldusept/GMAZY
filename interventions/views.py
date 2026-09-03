@@ -417,6 +417,16 @@ def maintenance_analyse(request):
     # de Panne ou d'une Intervention") où ce champ est renseigné par
     # l'utilisateur plutôt que laissé à sa valeur par défaut 'panne'.
     libelles_nature = dict(Intervention.NATURE_CHOICES)
+    # Une couleur par nature (indépendante de l'ordre de tri ci-dessous) :
+    # la même nature garde toujours la même couleur, quel que soit son rang.
+    couleurs_nature_par_valeur = {
+        'panne': 'rgba(239, 68, 68, 0.85)',
+        'reglage': 'rgba(59, 130, 246, 0.85)',
+        'nettoyage': 'rgba(16, 185, 129, 0.85)',
+        'modification': 'rgba(168, 85, 247, 0.85)',
+        'divers': 'rgba(148, 163, 184, 0.85)',
+        'travaux_neuf': 'rgba(245, 158, 11, 0.85)',
+    }
     repartition_nature = (
         Intervention.objects.filter(type_intervention='correctif')
         .values('nature')
@@ -425,6 +435,7 @@ def maintenance_analyse(request):
     )
     labels_nature = [libelles_nature.get(r['nature'], r['nature']) for r in repartition_nature]
     donnees_nature = [r['total'] for r in repartition_nature]
+    couleurs_nature = [couleurs_nature_par_valeur.get(r['nature'], 'rgba(100, 116, 139, 0.85)') for r in repartition_nature]
 
     context = {
         'total': total,
@@ -434,6 +445,7 @@ def maintenance_analyse(request):
         'pct_correctif': pct_correctif,
         'labels_nature': labels_nature,
         'donnees_nature': donnees_nature,
+        'couleurs_nature': couleurs_nature,
     }
     return render(request, 'interventions/maintenance_analyse.html', context)
 

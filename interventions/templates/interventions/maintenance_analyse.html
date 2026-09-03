@@ -79,9 +79,11 @@
 {% if donnees_nature %}
 {{ labels_nature|json_script:"labels-nature-data" }}
 {{ donnees_nature|json_script:"donnees-nature-data" }}
+{{ couleurs_nature|json_script:"couleurs-nature-data" }}
 <script>
     const labelsNature = JSON.parse(document.getElementById('labels-nature-data').textContent);
     const donneesNature = JSON.parse(document.getElementById('donnees-nature-data').textContent);
+    const couleursNature = JSON.parse(document.getElementById('couleurs-nature-data').textContent);
     const totalNature = donneesNature.reduce((somme, valeur) => somme + valeur, 0);
 
     const ctxNature = document.getElementById('pieChartNature').getContext('2d');
@@ -91,14 +93,12 @@
             labels: labelsNature,
             datasets: [{
                 data: donneesNature,
-                backgroundColor: [
-                    'rgba(239, 68, 68, 0.85)',   // Panne (rouge)
-                    'rgba(59, 130, 246, 0.85)',  // Réglage (bleu)
-                    'rgba(16, 185, 129, 0.85)',  // Nettoyage (vert)
-                    'rgba(168, 85, 247, 0.85)',  // Modification (violet)
-                    'rgba(148, 163, 184, 0.85)', // Divers (gris)
-                    'rgba(245, 158, 11, 0.85)',  // Travaux Neuf (ambre)
-                ],
+                // Couleurs calculées côté serveur (voir maintenance_analyse
+                // dans views.py) une par une pour chaque nature présente,
+                // dans le même ordre que labels_nature/donnees_nature : la
+                // même nature garde toujours la même couleur, quel que soit
+                // son rang dans le tri par nombre décroissant.
+                backgroundColor: couleursNature,
                 borderWidth: 1
             }]
         },
