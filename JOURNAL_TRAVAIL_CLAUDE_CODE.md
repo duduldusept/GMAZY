@@ -16,6 +16,8 @@ Ce fichier fait suite à `RESUME_POUR_CLAUDE_CODE_1.md` (contexte transmis depui
 
 **Déploiement** : commit `2a64ea6` poussé sur `origin/main`, `gmao_entreprise_rdy` synchronisé (pas de migration, aucun changement de modèle).
 
+**Bug signalé par l'utilisateur (capture d'écran)** : un Chef d'Équipe qui déclare une panne voit s'afficher, juste après le message vert de succès, un message rouge "Accès refusé : cette page n'est pas disponible pour ton rôle." Cause : `declarer_panne` (`interventions/views.py`) redirigeait en dur vers `liste_interventions` (Tableau de bord) après succès, alors que le rôle Chef d'Équipe n'a **pas** le droit `tableau_de_bord` par défaut (voir `utilisateurs/migrations/0004_droits_par_role.py` : `chef_equipe` a `declarer_panne` mais pas `tableau_de_bord`) — `necessite_droit` bloquait alors l'accès, affichait l'erreur, puis renvoyait quand même vers une page accessible. La déclaration avait donc bien réussi, seul le message était trompeur. **Corrigé** (commit `438c006`) : redirection directe vers `page_accueil_pour(request.user)` au lieu de `'liste_interventions'` en dur — pour un Chef d'Équipe, ça renvoie simplement vers `declarer_panne` (la page où il était déjà), sans détour ni fausse alerte. 1 nouveau test (`RedirectionApresDeclarationPanneTests`), 29 au total. Poussé + synchronisé dans `gmao_entreprise_rdy`.
+
 ---
 
 ## 2026-09-03 — Fenêtre de résolution, nature d'intervention, guides PowerPoint, audit de bugs (session interrompue, à reprendre demain)
