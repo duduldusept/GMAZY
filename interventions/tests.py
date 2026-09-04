@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from machines.models import Machine, PieceDetachee
+from utilisateurs.models import Fonctionnalite, DroitRole
 from .models import Intervention, InterventionPiece, DemandeAmelioration
 
 Utilisateur = get_user_model()
@@ -432,3 +433,43 @@ class InterventionPieceStockLimiteTests(TestCase):
         self.piece.refresh_from_db()
         self.assertEqual(self.piece.quantite_stock, 3)
         self.assertFalse(InterventionPiece.objects.filter(intervention=self.intervention).exists())
+
+
+class VisibiliteBoutonResoudreTests(TestCase):
+    """Le rôle Chef d'Équipe ne doit pas clôturer d'intervention (choix du
+    métier) : "Marquer comme Résolu" ne doit donc s'afficher que pour les
+    utilisateurs ayant la permission Django can_close_intervention (ou
+    superuser), pas juste le droit "changer_statut_intervention" qui donne
+    seulement le droit de prendre une intervention en charge."""
+
+    def setUp(self):
+        self.machine = Machine.objects.create(nom="Presse 7", code_interne="P7", emplacement="Atelier")
+        self.intervention = Intervention.objects.create(
+            titre="Panne", machine=self.machine, statut='en_cours',
+        )
+        # Ces Fonctionnalite existent déjà (seedées par la migration
+        # utilisateurs.0004_droits_par_role, qui ne donne PAS 'chef_equipe'
+        # par défaut) : on simule ici un admin ayant élargi l'accès à ce
+        # rôle depuis "Gestion des droits", sans toucher à can_close_intervention.
+        for code in ('tableau_de_bord', 'changer_statut_intervention'):
+            fonctionnalite = Fonctionnalite.objects.get(code=code)
+            DroitRole.objects.update_or_create(
+                fonctionnalite=fonctionnalite, role='chef_equipe', defaults={'autorise': True},
+            )
+        self.chef_equipe = Utilisateur.objects.create_user(
+            username='chef_test', password='motdepasse123', role='chef_equipe',
+        )
+
+    def test_chef_equipe_sans_permission_de_cloture_ne_voit_pas_le_bouton(self):
+        self.client.force_login(self.chef_equipe)
+        reponse = self.client.get(reverse('liste_interventions'))
+        self.assertNotContains(reponse, "Marquer comme Résolu")
+        self.assertContains(reponse, "En attente de clôture par un responsable")
+
+    def test_superuser_voit_le_bouton(self):
+        admin = Utilisateur.objects.create_superuser(
+            username='admin_resolu_visible', email='admin_resolu_visible@test.local', password='motdepasse123',
+        )
+        self.client.force_login(admin)
+        reponse = self.client.get(reverse('liste_interventions'))
+        self.assertContains(reponse, "Marquer comme Résolu")

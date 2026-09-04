@@ -38,10 +38,12 @@
                     🔄 Prendre en charge
                 </button>
             </form>
-            {% else %}
+            {% elif perms.interventions.can_close_intervention %}
             <button type="button" onclick="ouvrirModalResolution({{ intervention.id }})" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-1.5 px-3 rounded text-xs transition">
                 ✅ Marquer comme Résolu
             </button>
+            {% else %}
+            <p class="text-xs text-gray-400 text-center italic py-1.5">En attente de clôture par un responsable</p>
             {% endif %}
         {% endif %}
     </div>
