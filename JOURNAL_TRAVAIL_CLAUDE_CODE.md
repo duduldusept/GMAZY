@@ -6,6 +6,18 @@ Ce fichier fait suite à `RESUME_POUR_CLAUDE_CODE_1.md` (contexte transmis depui
 
 ---
 
+## 2026-09-04 — Suite de l'audit : les deux points en attente tranchés
+
+**Reprise** : relecture du journal, puis les deux points laissés en attente hier ont été soumis à l'utilisateur.
+
+**Point 1 (permission `can_close_intervention` manquante pour `chef_equipe`)** — tranché : **comportement voulu**, pas un bug. L'utilisateur préfère que les Chefs d'Équipe ne clôturent jamais d'intervention (seulement "Prendre en charge"). Mais l'UI restait trompeuse : le bouton "✅ Marquer comme Résolu" s'affichait quand même à ce rôle (gouverné par le droit `changer_statut_intervention`, distinct de la permission Django `can_close_intervention`), qui pouvait remplir toute la fenêtre de résolution avant de se faire recaler par le message d'erreur serveur. **Corrigé** (commit `2a64ea6`) : `liste_interventions.html` vérifie désormais `perms.interventions.can_close_intervention` (exposé nativement par le context processor `django.contrib.auth.context_processors.auth`, déjà dans `TEMPLATES`) avant d'afficher le bouton ; sinon un message neutre "En attente de clôture par un responsable" le remplace. Le contrôle serveur dans `resoudre_intervention` reste inchangé (déjà correct). 2 nouveaux tests (`VisibiliteBoutonResoudreTests`), 28 au total.
+
+**Point 2 (cache `LocMemCache` non partagé si plusieurs workers Gunicorn)** — vérifié sans toucher à Railway : aucun `Procfile`/`nixpacks.toml`/`railway.json` dans le dépôt, et `requirements.txt` liste `gunicorn` sans option `--workers`. Nixpacks lance donc très probablement gunicorn avec ses réglages par défaut (1 worker), ce qui rend le risque **faible en l'état actuel**. **Limite** : pas d'accès CLI/dashboard Railway depuis cette machine pour vérifier une éventuelle commande de démarrage personnalisée ou un nombre de réplicas &gt;1 configurés directement dans les réglages Railway (invisibles depuis le dépôt local) — resterait à vérifier par l'utilisateur si le sujet revient.
+
+**Déploiement** : commit `2a64ea6` poussé sur `origin/main`, `gmao_entreprise_rdy` synchronisé (pas de migration, aucun changement de modèle).
+
+---
+
 ## 2026-09-03 — Fenêtre de résolution, nature d'intervention, guides PowerPoint, audit de bugs (session interrompue, à reprendre demain)
 
 **Petites retouches** : ajout de la mention `©GMAZY` dans le badge de version (`v2.0 ©GMAZY`, taille ajustée à `text-[10px]` sur demande) dans `interventions/templates/interventions/base.html`.
