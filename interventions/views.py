@@ -9,7 +9,7 @@ from django.db import transaction
 from django.db.models import Case, When, IntegerField, Count
 from machines.models import Machine, Zone, PieceDetachee
 from .models import Intervention, DemandeAmelioration, InterventionPiece
-from utilisateurs.permissions import a_le_droit, necessite_droit
+from utilisateurs.permissions import a_le_droit, necessite_droit, page_accueil_pour
 
 # CORRECTIF SÉCURITÉ : on ne fournit plus les listes Python brutes au
 # template pour un rendu avec |safe (faille XSS si un nom de machine
@@ -68,7 +68,14 @@ def declarer_panne(request):
             messages.success(request, "L'intervention a bien été signalée à l'équipe de maintenance.")
         else:
             messages.success(request, "La panne a bien été signalée à l'équipe de maintenance.")
-        return redirect('liste_interventions')
+
+        # BUGFIX : rediriger en dur vers 'liste_interventions' (Tableau de
+        # bord) affichait un message "Accès refusé" juste après le message
+        # de succès pour tout rôle n'ayant pas le droit 'tableau_de_bord'
+        # (ex: Chef d'Équipe par défaut) - necessite_droit renvoyait alors
+        # vers page_accueil_pour de toute façon, mais après avoir affiché
+        # l'erreur. On y va donc directement, sans détour trompeur.
+        return redirect(page_accueil_pour(request.user))
 
     # Si c'est une requête simple (GET), on affiche juste la page avec la liste des machines
     machines_disponibles = Machine.objects.all()

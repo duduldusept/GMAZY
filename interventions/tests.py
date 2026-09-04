@@ -473,3 +473,29 @@ class VisibiliteBoutonResoudreTests(TestCase):
         self.client.force_login(admin)
         reponse = self.client.get(reverse('liste_interventions'))
         self.assertContains(reponse, "Marquer comme Résolu")
+
+
+class RedirectionApresDeclarationPanneTests(TestCase):
+    """Par défaut (migration utilisateurs.0004_droits_par_role), le rôle
+    Chef d'Équipe a le droit 'declarer_panne' mais pas 'tableau_de_bord'.
+    Après une déclaration réussie, la redirection ne doit jamais pointer
+    vers une page que l'utilisateur ne peut pas voir (ce qui affichait un
+    "Accès refusé" juste après le message de succès)."""
+
+    def setUp(self):
+        self.machine = Machine.objects.create(nom="Presse 8", code_interne="P8", emplacement="Atelier")
+        self.chef_equipe = Utilisateur.objects.create_user(
+            username='chef_redirection', password='motdepasse123', role='chef_equipe',
+        )
+        self.client.force_login(self.chef_equipe)
+
+    def test_redirection_vers_une_page_accessible_sans_message_d_erreur(self):
+        reponse = self.client.post(reverse('declarer_panne'), {
+            'machine': self.machine.id, 'etat_machine': 'arretee', 'mode': 'panne',
+            'titre': "Bruit anormal", 'description': "Description",
+        }, follow=True)
+
+        self.assertEqual(reponse.redirect_chain[-1][0], reverse('declarer_panne'))
+        textes_messages = [str(m) for m in reponse.context['messages']]
+        self.assertTrue(any("bien été signalée" in texte for texte in textes_messages))
+        self.assertFalse(any("Accès refusé" in texte for texte in textes_messages))
